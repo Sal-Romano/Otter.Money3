@@ -54,6 +54,11 @@ prisma/*.db-journal
 # Docker
 docker-compose.override.yml
 
+# Capacitor
+ios/App/Pods/
+android/.gradle/
+android/app/build/
+
 # Temporary files
 tmp/
 temp/

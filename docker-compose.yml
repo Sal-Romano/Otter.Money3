@@ -1,0 +1,23 @@
+version: '3.8'
+
+# Development environment
+# PostgreSQL should be running locally or use a managed service
+# This just provides Redis for caching and job queue
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: otter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:

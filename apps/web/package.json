@@ -1,0 +1,47 @@
+{
+  "name": "@otter-money/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "ios:dev": "npm run build && cap sync ios && cap run ios --livereload --external",
+    "android:dev": "npm run build && cap sync android && cap run android --livereload --external"
+  },
+  "dependencies": {
+    "@otter-money/shared": "workspace:*",
+    "@capacitor/core": "^5.6.0",
+    "@capacitor/ios": "^5.6.0",
+    "@capacitor/android": "^5.6.0",
+    "@capacitor/app": "^5.0.6",
+    "@capacitor/haptics": "^5.0.6",
+    "@capacitor/keyboard": "^5.0.7",
+    "@capacitor/status-bar": "^5.0.6",
+    "@tanstack/react-query": "^5.17.19",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.3",
+    "zustand": "^4.5.0",
+    "recharts": "^2.10.4",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.6.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.0.12",
+    "typescript": "^5.3.3"
+  }
+}

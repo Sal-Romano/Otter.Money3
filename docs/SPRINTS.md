@@ -10,44 +10,44 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 0: Project Foundation
-**Status:** 🟡 In Progress
+**Status:** 🟢 Complete
 **Goal:** Project setup and infrastructure
 
 ### Tasks
 - [x] Create project documentation (PRD, Architecture, Sprints)
 - [x] Initialize git repository
-- [ ] Set up monorepo structure (apps/web, apps/api, packages/shared)
-- [ ] Configure TypeScript, ESLint, Prettier
-- [ ] Set up Vite + React for frontend
-- [ ] Set up Tailwind CSS with brand colors (`#9F6FBA` purple, white)
-- [ ] Create basic project scaffolding
-- [ ] Set up Docker Compose (PostgreSQL + Redis)
-- [ ] Configure environment variables structure (.env.example)
-- [ ] Set up Prisma with initial schema (Household, User models)
-- [ ] Create initial database migration
-- [ ] Set up Capacitor for iOS/Android
+- [x] Set up monorepo structure (apps/web, apps/api, packages/shared)
+- [x] Configure TypeScript, ESLint, Prettier
+- [x] Set up Vite + React for frontend
+- [x] Set up Tailwind CSS with brand colors (`#9F6FBA` purple, white)
+- [x] Create basic project scaffolding
+- [x] Set up Docker Compose (Redis for dev, Dockerfiles for prod)
+- [x] Configure environment variables structure (.env.example)
+- [x] Set up Prisma with initial schema (Household, User, Account, Transaction, etc.)
+- [x] Create seed file for default categories
+- [x] Set up Capacitor for iOS/Android
 
 ### Deliverables
 - Running dev environment with hot reload
 - Empty app shell that builds successfully
-- Database ready with household/user tables
+- Database schema ready with all models
 - Capacitor configured for mobile builds
 
 ---
 
 ## Sprint 1: Authentication & Household Setup
-**Status:** ⚪ Not Started
+**Status:** 🟡 In Progress
 **Goal:** Users can create households, invite partners, and log in
 
 ### Tasks
-- [ ] Implement user registration API (creates user + household)
-- [ ] Implement household invite code generation
-- [ ] Implement "join household" registration flow
-- [ ] Implement login/logout API
-- [ ] Implement JWT authentication middleware
-- [ ] Create auth context on frontend
-- [ ] Build login page (mobile-first, purple theme)
-- [ ] Build registration page (create household flow)
+- [x] Implement user registration API (creates user + household)
+- [x] Implement household invite code generation
+- [x] Implement "join household" registration flow
+- [x] Implement login/logout API
+- [x] Implement JWT authentication middleware
+- [x] Create auth context on frontend (Zustand store)
+- [x] Build login page (mobile-first, purple theme)
+- [x] Build registration page (create household flow)
 - [ ] Build "join household" page (with invite code)
 - [ ] Build password reset flow
 - [ ] Create app layout with bottom navigation

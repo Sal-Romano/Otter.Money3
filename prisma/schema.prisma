@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// HOUSEHOLD & USERS
+// ============================================
+
+model Household {
+  id         String   @id @default(cuid())
+  name       String?
+  inviteCode String   @unique @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members             User[]
+  accounts            Account[]
+  categories          Category[]
+  budgets             Budget[]
+  goals               Goal[]
+  rules               CategorizationRule[]
+  simplefinConnection SimplefinConnection?
+  conversations       Conversation[]
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  emailVerified Boolean    @default(false)
+  householdId   String?
+  household     Household? @relation(fields: [householdId], references: [id])
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  plaidItems    PlaidItem[]
+  ownedAccounts Account[]   @relation("AccountOwner")
+
+  @@index([householdId])
+}
+
+// ============================================
+// FINANCIAL ACCOUNTS
+// ============================================
+
+model Account {
+  id                 String           @id @default(cuid())
+  householdId        String
+  household          Household        @relation(fields: [householdId], references: [id])
+  ownerId            String?
+  owner              User?            @relation("AccountOwner", fields: [ownerId], references: [id])
+  name               String
+  type               AccountType
+  subtype            String?
+  connectionType     ConnectionType   @default(MANUAL)
+  plaidItemId        String?
+  plaidAccountId     String?
+  simplefinAccountId String?
+  connectionStatus   ConnectionStatus @default(ACTIVE)
+  lastSyncedAt       DateTime?
+  currentBalance     Decimal          @db.Decimal(19, 4)
+  availableBalance   Decimal?         @db.Decimal(19, 4)
+  currency           String           @default("USD")
+  isHidden           Boolean          @default(false)
+  excludeFromBudget  Boolean          @default(false)
+  excludeFromNetWorth Boolean         @default(false)
+  displayOrder       Int              @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  transactions Transaction[]
+
+  @@index([householdId])
+  @@index([ownerId])
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT
+  INVESTMENT
+  LOAN
+  MORTGAGE
+  ASSET
+  OTHER
+}
+
+enum ConnectionType {
+  PLAID
+  SIMPLEFIN
+  MANUAL
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  REQUIRES_REAUTH
+  DISCONNECTED
+  ERROR
+}
+
+// ============================================
+// TRANSACTIONS
+// ============================================
+
+model Transaction {
+  id           String    @id @default(cuid())
+  accountId    String
+  account      Account   @relation(fields: [accountId], references: [id])
+  externalId   String?   @unique
+  date         DateTime  @db.Date
+  amount       Decimal   @db.Decimal(19, 4)
+  currency     String    @default("USD")
+  merchantName String?
+  description  String
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  isManual     Boolean   @default(false)
+  isAdjustment Boolean   @default(false)
+  isPending    Boolean   @default(false)
+  notes        String?
+  parentId     String?
+  parent       Transaction?  @relation("SplitTransactions", fields: [parentId], references: [id])
+  splits       Transaction[] @relation("SplitTransactions")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([accountId, date])
+  @@index([categoryId])
+}
+
+// ============================================
+// CATEGORIES & RULES
+// ============================================
+
+model Category {
+  id          String       @id @default(cuid())
+  householdId String?
+  household   Household?   @relation(fields: [householdId], references: [id])
+  name        String
+  type        CategoryType
+  icon        String?
+  color       String?
+  parentId    String?
+  parent      Category?    @relation("SubCategories", fields: [parentId], references: [id])
+  children    Category[]   @relation("SubCategories")
+  isSystem    Boolean      @default(false)
+
+  transactions Transaction[]
+  budgets      Budget[]
+  rules        CategorizationRule[]
+
+  @@unique([householdId, name])
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+model CategorizationRule {
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  conditions  Json
+  priority    Int       @default(0)
+  isEnabled   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  @@index([householdId])
+}
+
+// ============================================
+// BUDGETS & GOALS
+// ============================================
+
+model Budget {
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  amount      Decimal   @db.Decimal(19, 4)
+  period      String
+  rollover    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([householdId, categoryId, period])
+}
+
+model Goal {
+  id            String    @id @default(cuid())
+  householdId   String
+  household     Household @relation(fields: [householdId], references: [id])
+  name          String
+  targetAmount  Decimal   @db.Decimal(19, 4)
+  currentAmount Decimal   @db.Decimal(19, 4) @default(0)
+  targetDate    DateTime?
+  icon          String?
+  color         String?
+  isCompleted   Boolean   @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ============================================
+// INTEGRATIONS
+// ============================================
+
+model PlaidItem {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  itemId           String    @unique
+  accessToken      String
+  institutionId    String?
+  institutionName  String?
+  consentExpiresAt DateTime?
+  cursor           String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model SimplefinConnection {
+  id           String    @id @default(cuid())
+  householdId  String    @unique
+  household    Household @relation(fields: [householdId], references: [id])
+  accessUrl    String
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ============================================
+// WALLY AI
+// ============================================
+
+model Conversation {
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+}
