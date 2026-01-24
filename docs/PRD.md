@@ -3,80 +3,125 @@
 ## Product Overview
 
 **Product Name:** Otter Money
-**Tagline:** Your friendly financial companion
+**Tagline:** Manage your money together
 
-Otter Money is a personal finance management application designed with mobile-first UX. Users can connect their bank accounts via Plaid or SimpleFin Bridge, manually track large assets, categorize transactions, set budgets, and interact with an AI assistant named Wally.
+Otter Money is a **couples-focused** personal finance app designed for partners to manage their household finances together. Each partner has their own login but shares a unified view of the household's accounts, transactions, budgets, and goals.
+
+**Brand Colors:**
+- Primary: Purple `#9F6FBA` / `rgb(159, 111, 186)`
+- Secondary: White `#FFFFFF`
+
+---
+
+## Core Concept: The Household Model
+
+The app is built around the concept of a **Household** - a shared financial unit for a couple.
+
+### Key Principles
+
+1. **One Household, Two Users** - A household has exactly two members (partners)
+2. **Shared Financial Picture** - All accounts, transactions, and budgets belong to the household
+3. **Individual Ownership** - Each account is "owned by" a specific partner for clarity
+4. **Individual Actions** - Each partner logs in separately and can categorize/manage transactions
+5. **Shared Visibility** - Both partners see everything; no hidden accounts or transactions
+
+### Data Model Summary
+
+```
+Household
+├── Member 1 (User)
+│   ├── Plaid Connection(s)
+│   └── Owns: Checking, Credit Card, etc.
+├── Member 2 (User)
+│   ├── Plaid Connection(s)
+│   └── Owns: Savings, Investment, etc.
+├── SimpleFin Connection (one per household)
+├── Shared Categories & Rules
+├── Shared Budgets
+└── Shared Goals
+```
 
 ---
 
 ## User Personas
 
-### Primary: Young Professional (25-40)
-- Has multiple bank accounts and credit cards
-- Wants visibility into spending habits
-- Saving for goals (house, vacation, emergency fund)
-- Uses phone as primary device
+### Primary: Young Couple (25-40)
+- Recently moved in together or married
+- Combining finances for the first time
+- Want visibility into household spending
+- Need to coordinate on budgets and goals
 
-### Secondary: Household Finance Manager
-- Manages household finances
-- Tracks shared accounts and large assets (home, vehicles)
-- Needs to understand month-over-month trends
+### Secondary: Established Couple
+- Have been managing money together for years
+- Multiple accounts across both partners
+- Want better tools than spreadsheets
+- Care about long-term goals (house, retirement)
 
 ---
 
 ## Feature Specifications
 
-### 1. Authentication
+### 1. Authentication & Onboarding
 
-#### 1.1 Login
+#### 1.1 Create Household Flow
+1. First partner signs up (email, password, name)
+2. Creates household (household name optional, defaults to "[Name]'s Household")
+3. Receives invite link/code to share with partner
+4. Partner signs up using invite link
+5. Both partners now have access to the household
+
+#### 1.2 Login
 - Email/password authentication
 - "Remember me" functionality
 - Password reset via email
+- Each partner logs in independently
 
-#### 1.2 Account Creation
-- Email, password, name fields
-- Email verification
-- Terms of service acceptance
+#### 1.3 Join Existing Household
+- Enter invite code OR click invite link
+- Create account (email, password, name)
+- Automatically joined to household
 
-#### 1.3 Session Management
+#### 1.4 Session Management
 - JWT-based sessions
-- Automatic token refresh
+- Each partner has independent sessions
 - Secure logout
 
 ---
 
 ### 2. Dashboard
 
-The dashboard is the home screen providing an at-a-glance view of financial health.
+The dashboard shows the **household's** combined financial picture.
 
 #### 2.1 Net Worth Chart
-- Line chart showing net worth over time
-- Configurable time range (1M, 3M, 6M, 1Y, All)
-- Breakdown by account type (assets vs liabilities)
+- Combined net worth of all household accounts
+- Line chart over time (1M, 3M, 6M, 1Y, All)
+- Option to see breakdown by partner
 
 #### 2.2 Transactions Preview
-- Last 5-10 transactions
+- Last 5-10 transactions across all accounts
+- Shows which partner's account
 - Quick categorization if uncategorized
-- "View all" link to Transactions page
+- "View all" link
 
 #### 2.3 Spending Preview
+- Combined household spending
 - Month-over-month comparison
 - Category breakdown (pie/bar chart)
-- Current month vs previous month delta
+- Option to filter by partner
 
 #### 2.4 Recurring Payments Preview
-- Upcoming bills/subscriptions
+- All upcoming household bills
+- Shows which account/partner
 - Next 7-14 days
-- Amount and due date
 
 #### 2.5 Investments Performance Preview
-- Total investment value
-- Gain/loss ($ and %)
-- Top holdings summary
+- Combined investment value
+- Total gain/loss
+- Summary across both partners
 
 #### 2.6 Goals Progress Preview
-- Active goals with progress bars
-- Projected completion date
+- Shared household goals
+- Progress bars
 - Quick add funds action
 
 ---
@@ -84,156 +129,176 @@ The dashboard is the home screen providing an at-a-glance view of financial heal
 ### 3. Transactions
 
 #### 3.1 Transaction List
-- Filterable by date, account, category, amount
-- Searchable by merchant/description
-- Infinite scroll with date grouping
-- Pull-to-refresh on mobile
+- All transactions from all household accounts
+- Filter by: date, account, category, partner, amount
+- Search by merchant/description
+- Visual indicator of which partner's account
 
 #### 3.2 Transaction Details
 - Date, amount, merchant, account
-- Category (editable)
+- Which partner owns the account
+- Category (editable by either partner)
 - Notes field
 - Split transaction support
 - Attachments (receipts)
 
 #### 3.3 Categorization
-- Assign category to transaction
-- Create categorization rules:
-  - "If merchant contains X, categorize as Y"
-  - "If amount > X from account Y, categorize as Z"
-- Apply rules retroactively option
+- Shared category system across household
+- Create categorization rules (shared)
+- Rules apply to all household transactions
+- Either partner can categorize any transaction
 
 #### 3.4 Manual Transactions
 
-> **Open Question:** How should manual transactions affect balances for Plaid/SimpleFin managed accounts?
-
-**Proposed Solution:**
-- **Option A (Recommended):** Manual transactions on synced accounts are tracked separately as "adjustments" and don't affect the synced balance. They appear in transaction lists and reports but the account balance always reflects the bank's reported balance.
-- **Option B:** Manual transactions adjust a "local balance" that can differ from the "synced balance". Show both balances.
-- **Option C:** Don't allow manual transactions on synced accounts—only on manually tracked accounts.
+**For synced accounts (Plaid/SimpleFin):**
+- Manual transactions tracked as "adjustments"
+- Don't affect synced balance
+- Appear in transaction lists and reports
+- Marked with indicator that they're manual
 
 **For manually tracked accounts:**
-- Manual transactions directly update the account balance
-- Support income, expense, and transfer transaction types
+- Manual transactions directly update balance
+- Support income, expense, transfer types
 
 ---
 
 ### 4. Accounts
 
 #### 4.1 Account List
+- All household accounts
 - Grouped by type: Checking, Savings, Credit, Investment, Loan, Asset
-- Show current balance and last sync time
-- Connection status indicator
+- Shows owner (which partner)
+- Balance and last sync time
+- Connection status
 
-#### 4.2 Connected Accounts (Plaid/SimpleFin)
-- View connection status
-- Refresh connection
-- Reconnect if expired
-- Remove account
+#### 4.2 Adding Connected Accounts
+
+**Plaid (multiple per partner):**
+- Each partner connects their own banks
+- Partner A's bank connections are "owned by" Partner A
+- No limit on number of Plaid connections per partner
+
+**SimpleFin (one per household):**
+- Single SimpleFin connection for the household
+- Typically used for institutions not supported by Plaid
+- Either partner can set up/manage
 
 #### 4.3 Manual Accounts
-- Add account with name, type, initial balance
+- Add account with name, type, owner, initial balance
 - Edit balance (creates adjustment transaction)
 - Track assets like:
-  - Real estate (home value)
+  - Real estate (home value) - typically "joint"
   - Vehicles
   - Valuables
-  - Cash
 
-#### 4.4 Balance Edit UX (Manual Accounts)
-- Enter new balance
-- System calculates difference
-- Auto-creates adjustment transaction
-- Transaction shows "Balance adjusted from $X to $Y"
+#### 4.4 Account Ownership
+- Each account has an "owner": Partner A, Partner B, or "Joint"
+- Joint accounts appear with both partners' indicator
+- Owner is for display/organization; both can manage
 
 ---
 
 ### 5. Budget
 
 #### 5.1 Budget Setup
-- Set monthly spending limits by category
-- Rollover unused budget option
-- Copy from previous month
+- Household-level budgets (not per-partner)
+- Set monthly limits by category
+- Spending from either partner counts toward budget
 
 #### 5.2 Budget Tracking
 - Progress bar per category
 - Spent vs budgeted
-- Days remaining in month
-- Projected end-of-month spend
+- Shows contribution from each partner
+- "Partner A spent $X, Partner B spent $Y"
 
-#### 5.3 Alerts
-- Notification when approaching limit (80%)
-- Notification when exceeded
-- Weekly summary option
+#### 5.3 Insights
+- "You've both spent $X on dining this month"
+- Alerts when approaching/exceeding limits
+- Week-over-week trends
 
 ---
 
 ### 6. Settings
 
-#### 6.1 Category Management
-- Default categories provided:
-  - Income: Salary, Freelance, Interest, Dividends, Other
-  - Expenses: Housing, Transportation, Food & Dining, Shopping, Entertainment, Healthcare, Utilities, Subscriptions, Travel, Education, Personal Care, Gifts, Other
-  - Transfers: Transfer, Credit Card Payment
-- Create custom categories
-- Edit/rename categories
-- Merge categories
-- Set category icons/colors
+#### 6.1 Household Settings
+- Household name
+- Manage members (view partner info)
+- Leave household (with confirmation)
 
-#### 6.2 Account Settings
-- Rename accounts
-- Set account display order
-- Hide accounts from net worth
-- Exclude accounts from budget
+#### 6.2 Category Management
+- Shared categories for the household
+- Default categories provided
+- Create/edit/merge custom categories
+- Both partners share the same category list
 
-#### 6.3 Profile Settings
+#### 6.3 Profile Settings (per partner)
 - Update name, email, password
 - Notification preferences
-- Data export (CSV/JSON)
-- Delete account
+- Avatar/profile picture
+
+#### 6.4 Data & Privacy
+- Export household data (CSV/JSON)
+- Delete account (with household implications)
 
 ---
 
 ### 7. Wally AI Assistant
 
-Wally is an otter-themed AI assistant powered by Claude that has full context of the user's financial data.
+Wally is an otter-themed AI assistant with full context of the **household's** finances.
 
 #### 7.1 Capabilities
-- Answer questions about spending ("How much did I spend on food last month?")
-- Provide insights ("You spent 20% more on dining out this month")
-- Suggest optimizations ("You have 3 similar subscriptions")
-- Help with budgeting ("Based on your income, here's a suggested budget")
-- Explain transactions ("What was this $47.99 charge?")
+- "How much did we spend on groceries last month?"
+- "What's our net worth trend looking like?"
+- "Did [partner] already pay the electric bill?"
+- "We're over budget on dining - what should we cut?"
+- "What are our biggest expenses as a couple?"
 
 #### 7.2 UX
 - Chat interface accessible from any screen
 - Floating action button (FAB) on mobile
-- Text input with suggested prompts
-- Rich responses with charts/tables when appropriate
+- Understands "we/us/our" context
+- Can reference either partner by name
 
-#### 7.3 Data Access
-- Read access to all user financial data
-- Cannot modify data directly
-- Suggestions require user confirmation
+#### 7.3 Personality
+- Friendly, helpful otter
+- Uses "you two" and "your household"
+- Encouraging about financial progress
+- Non-judgmental about spending
 
 ---
 
 ## Integration Specifications
 
 ### Plaid Integration
+- **Multiple connections per partner** - Each partner connects their own banks
 - **Products:** Transactions, Auth, Balance, Investments, Liabilities
-- **Environments:** Sandbox (dev), Production
-- **Webhook Events:**
-  - TRANSACTIONS_SYNC
-  - ITEM_LOGIN_REQUIRED
-  - INVESTMENTS_TRANSACTIONS_UPDATE
-- **Link Flow:** Embedded in-app
+- **Account ownership:** Accounts from Partner A's Plaid connection are owned by Partner A
 
 ### SimpleFin Bridge Integration
-- Alternative to Plaid for institutions not covered
-- Token-based authentication
-- Manual refresh support
-- Webhook support if available
+- **One connection per household**
+- Used for institutions not covered by Plaid
+- Either partner can manage the connection
+- Account ownership assigned manually after connection
+
+---
+
+## UX Principles
+
+### Mobile-First
+- Primary design target: iPhone/Android
+- Touch-friendly interactions
+- Bottom navigation for primary actions
+- Pull-to-refresh patterns
+
+### Partner Indicators
+- Color coding or avatars to show "whose" account/transaction
+- Consistent visual language throughout
+- Never hidden - transparency is key
+
+### Shared Context
+- Always clear that data is household-level
+- Use "household" or couple-friendly language
+- "Your household spent..." not "You spent..."
 
 ---
 
@@ -241,35 +306,25 @@ Wally is an otter-themed AI assistant powered by Claude that has full context of
 
 ### Performance
 - Dashboard load < 2 seconds
-- Transaction list scroll smooth at 60fps
-- Sync operations background with progress indicator
+- Smooth scrolling at 60fps
+- Background sync with progress indicator
 
 ### Security
 - All data encrypted at rest and in transit
-- No plaintext credential storage
-- Session timeout after inactivity
-- Rate limiting on authentication endpoints
+- Partners cannot access each other's login credentials
+- Session isolation between partners
 
 ### Accessibility
 - WCAG 2.1 AA compliance
 - Screen reader support
-- High contrast mode support
-
----
-
-## Success Metrics
-
-- User can connect first account within 5 minutes
-- 80% of transactions auto-categorized correctly
-- Daily active users check dashboard at least 3x/week
-- Budget feature adoption > 60% of users
+- Color contrast meets standards (especially with purple theme)
 
 ---
 
 ## Open Questions
 
-1. **Manual transactions on synced accounts** - See section 3.4
-2. **Multi-currency support** - V1 or future?
-3. **Shared household access** - Multiple users per household?
-4. **Investment tracking depth** - Just balances or full holdings/lots?
-5. **Bill detection** - Auto-detect recurring transactions?
+1. **Household dissolution** - What happens if partners split up? Data export? Account transfer?
+2. **More than 2 members?** - Roommates? Family? Keep it couples-only for V1?
+3. **Permission levels** - Should one partner be "admin"? Or equal access?
+4. **Investment tracking depth** - Just balances or full holdings?
+5. **Notification preferences** - Per-partner or household-level?

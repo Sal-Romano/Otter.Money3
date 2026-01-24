@@ -45,6 +45,7 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
 
 # Prisma
 prisma/*.db

@@ -1,21 +1,22 @@
 # Otter Money
 
-Personal finance management app with a friendly otter assistant named Wally.
+Couples finance management app - manage your household finances together.
 
 **Production URL:** https://app.otter.money
 **Landing Page:** https://otter.money
 
 ## Overview
 
-Otter Money is a mobile-first personal finance application that helps users track their spending, manage budgets, monitor investments, and achieve financial goals. The app integrates with Plaid and SimpleFin Bridge for automatic bank/transaction syncing, while also supporting manual account tracking for assets like vehicles and property.
+Otter Money is a mobile-first finance app designed for **couples** to manage their household finances together. Each partner has their own login but shares a unified view of the household's financial picture. Connect bank accounts via Plaid or SimpleFin, categorize transactions, set budgets, and chat with Wally - your friendly AI otter assistant.
 
 ## Key Features
 
-- **Dashboard** - At-a-glance view of net worth, recent transactions, spending trends, and goal progress
-- **Transaction Management** - Automatic categorization with rules engine, manual transaction support
-- **Account Aggregation** - Plaid & SimpleFin integration + manual account tracking
-- **Budgeting** - Monthly spending limits with category-based tracking
-- **Wally AI** - Conversational AI assistant with full context of your finances
+- **Household Model** - One shared household, two individual logins
+- **Dashboard** - Combined net worth, spending, and goal progress for the household
+- **Transaction Management** - Each partner categorizes their own transactions with shared rules
+- **Account Aggregation** - Multiple Plaid connections (per partner) + one SimpleFin account
+- **Budgeting** - Household budgets with visibility into who spent what
+- **Wally AI** - Conversational AI assistant with full context of your household finances
 
 ## Documentation
 
@@ -31,9 +32,16 @@ Otter Money is a mobile-first personal finance application that helps users trac
 - **Frontend:** React + TypeScript, Tailwind CSS, mobile-first design
 - **Backend:** Node.js + TypeScript, Express/Fastify
 - **Database:** PostgreSQL with Prisma ORM
+- **Mobile:** Capacitor (iOS & Android)
 - **Integrations:** Plaid API, SimpleFin Bridge
 - **AI:** Anthropic Claude API (Wally assistant)
 - **Auth:** JWT-based authentication
+
+## Brand
+
+- **Primary Color:** Purple `rgb(159, 111, 186)` / `#9F6FBA`
+- **Secondary Color:** White `#FFFFFF`
+- **Mascot:** Wally the Otter (and partner!)
 
 ## Getting Started
 
@@ -49,6 +57,9 @@ npm run db:migrate
 
 # Start development server
 npm run dev
+
+# Preview on iOS (requires Xcode)
+npm run ios
 ```
 
 ## Project Structure
@@ -56,13 +67,16 @@ npm run dev
 ```
 otter-money/
 ├── docs/                 # Project documentation
+├── apps/
+│   ├── web/             # React frontend
+│   └── api/             # Node.js backend
+├── packages/
+│   └── shared/          # Shared types and utilities
+├── prisma/              # Database schema and migrations
 ├── src/
-│   ├── app/             # Frontend application
-│   ├── server/          # Backend API
-│   ├── shared/          # Shared types and utilities
-│   └── db/              # Database schema and migrations
-├── public/              # Static assets
-└── tests/               # Test suites
+│   └── public/          # Static assets (logos, icons)
+├── ios/                 # Capacitor iOS project
+└── android/             # Capacitor Android project
 ```
 
 ## License

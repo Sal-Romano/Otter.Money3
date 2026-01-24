@@ -16,169 +16,186 @@ Development is organized into sprints, each delivering a working increment of th
 ### Tasks
 - [x] Create project documentation (PRD, Architecture, Sprints)
 - [x] Initialize git repository
-- [ ] Set up monorepo structure (frontend + backend)
+- [ ] Set up monorepo structure (apps/web, apps/api, packages/shared)
 - [ ] Configure TypeScript, ESLint, Prettier
-- [ ] Set up Tailwind CSS
+- [ ] Set up Vite + React for frontend
+- [ ] Set up Tailwind CSS with brand colors (`#9F6FBA` purple, white)
 - [ ] Create basic project scaffolding
-- [ ] Set up development environment (Docker Compose)
-- [ ] Configure environment variables structure
-- [ ] Set up database with Prisma
-- [ ] Create initial schema migration
+- [ ] Set up Docker Compose (PostgreSQL + Redis)
+- [ ] Configure environment variables structure (.env.example)
+- [ ] Set up Prisma with initial schema (Household, User models)
+- [ ] Create initial database migration
+- [ ] Set up Capacitor for iOS/Android
 
 ### Deliverables
 - Running dev environment with hot reload
 - Empty app shell that builds successfully
-- Database ready for development
+- Database ready with household/user tables
+- Capacitor configured for mobile builds
 
 ---
 
-## Sprint 1: Authentication & Core UI
+## Sprint 1: Authentication & Household Setup
 **Status:** ⚪ Not Started
-**Goal:** Users can register, login, and see a basic app shell
+**Goal:** Users can create households, invite partners, and log in
 
 ### Tasks
-- [ ] Implement user registration API
+- [ ] Implement user registration API (creates user + household)
+- [ ] Implement household invite code generation
+- [ ] Implement "join household" registration flow
 - [ ] Implement login/logout API
 - [ ] Implement JWT authentication middleware
 - [ ] Create auth context on frontend
-- [ ] Build login page (mobile-first)
-- [ ] Build registration page
+- [ ] Build login page (mobile-first, purple theme)
+- [ ] Build registration page (create household flow)
+- [ ] Build "join household" page (with invite code)
 - [ ] Build password reset flow
-- [ ] Create app layout (nav, sidebar/bottom nav)
+- [ ] Create app layout with bottom navigation
 - [ ] Implement protected routes
-- [ ] Build basic settings page (profile)
+- [ ] Build household settings page (view partner, invite link)
 
 ### Deliverables
-- Working authentication flow
-- App shell with navigation
-- User can create account and login
+- Partner A can create account + household
+- Partner A can share invite link
+- Partner B can join household via invite
+- Both partners can log in independently
 
 ---
 
 ## Sprint 2: Manual Accounts & Dashboard Foundation
 **Status:** ⚪ Not Started
-**Goal:** Users can add manual accounts and see basic dashboard
+**Goal:** Partners can add manual accounts and see basic dashboard
 
 ### Tasks
-- [ ] Implement accounts API (CRUD)
-- [ ] Build accounts list page
-- [ ] Build add/edit account modal
+- [ ] Implement accounts API (CRUD, scoped to household)
+- [ ] Add account ownership (which partner or "joint")
+- [ ] Build accounts list page with partner indicators
+- [ ] Build add/edit account modal (select owner)
 - [ ] Implement balance update with adjustment transactions
 - [ ] Build basic dashboard layout
-- [ ] Implement net worth calculation
+- [ ] Implement household net worth calculation
 - [ ] Build net worth chart component
+- [ ] Show partner breakdown on net worth
 - [ ] Create account type icons/styling
 
 ### Deliverables
-- User can add manual accounts (checking, savings, assets)
-- User can update balances
-- Dashboard shows net worth over time
+- Either partner can add manual accounts
+- Accounts show which partner owns them
+- Dashboard shows combined household net worth
+- Balance updates create adjustment transactions
 
 ---
 
 ## Sprint 3: Manual Transactions & Categories
 **Status:** ⚪ Not Started
-**Goal:** Users can manually track transactions and categorize them
+**Goal:** Partners can manually track transactions with shared categories
 
 ### Tasks
-- [ ] Implement transactions API (CRUD)
-- [ ] Implement categories API with default categories
+- [ ] Implement transactions API (CRUD, scoped to household)
+- [ ] Implement categories API with default categories (household-level)
 - [ ] Build transactions list page with filters
+- [ ] Add partner filter to transaction list
+- [ ] Show which partner's account each transaction belongs to
 - [ ] Build add/edit transaction modal
 - [ ] Build category selector component
-- [ ] Build category management in settings
+- [ ] Build category management in settings (shared for household)
 - [ ] Implement transaction search
 - [ ] Add transactions preview to dashboard
 
 ### Deliverables
-- User can manually add transactions
-- User can categorize transactions
-- User can manage custom categories
-- Dashboard shows recent transactions
+- Either partner can add transactions to any account
+- Either partner can categorize any transaction
+- Categories are shared across the household
+- Transaction list shows partner ownership
 
 ---
 
 ## Sprint 4: Plaid Integration
 **Status:** ⚪ Not Started
-**Goal:** Users can connect bank accounts via Plaid
+**Goal:** Each partner can connect their own bank accounts via Plaid
 
 ### Tasks
 - [ ] Set up Plaid client and configuration
-- [ ] Implement Plaid Link token generation
+- [ ] Implement Plaid Link token generation (per user)
 - [ ] Implement public token exchange
 - [ ] Build Plaid Link integration in frontend
+- [ ] Associate Plaid items with the connecting user
+- [ ] Auto-assign account ownership to connecting partner
 - [ ] Implement transaction sync (initial)
 - [ ] Implement webhook handlers
 - [ ] Handle connection status and re-authentication
-- [ ] Map Plaid categories to app categories
+- [ ] Map Plaid categories to household categories
 - [ ] Update dashboard for connected accounts
 
 ### Deliverables
-- User can connect bank accounts
-- Transactions automatically sync
-- Balances update via Plaid
+- Each partner connects their own banks
+- Accounts automatically owned by connecting partner
+- Transactions sync and appear in household view
+- Both partners see all accounts/transactions
 
 ---
 
 ## Sprint 5: Categorization Rules Engine
 **Status:** ⚪ Not Started
-**Goal:** Automatic transaction categorization with user-defined rules
+**Goal:** Automatic transaction categorization with household-shared rules
 
 ### Tasks
-- [ ] Design rules engine data model
+- [ ] Design rules engine data model (household-level)
 - [ ] Implement rules API (CRUD)
 - [ ] Build rules management UI
 - [ ] Implement rule matching logic
-- [ ] Auto-apply rules on new transactions
+- [ ] Auto-apply rules on new transactions (all household transactions)
 - [ ] Build "create rule from transaction" UX
 - [ ] Implement retroactive rule application
 - [ ] Add rule suggestions based on patterns
 
 ### Deliverables
-- User can create categorization rules
+- Either partner can create categorization rules
+- Rules apply to all household transactions
 - New transactions auto-categorized
-- Option to apply rules to existing transactions
 
 ---
 
 ## Sprint 6: Budgeting
 **Status:** ⚪ Not Started
-**Goal:** Users can set and track monthly budgets
+**Goal:** Partners can set and track household budgets together
 
 ### Tasks
-- [ ] Implement budget API (CRUD)
+- [ ] Implement budget API (CRUD, household-level)
 - [ ] Build budget setup page
 - [ ] Build budget tracking view
-- [ ] Implement spending calculations per category
+- [ ] Calculate household spending per category
+- [ ] Show spending breakdown by partner ("You: $X, Partner: $Y")
 - [ ] Build progress bar components
 - [ ] Add budget status to dashboard
 - [ ] Implement budget alerts (approaching/exceeded)
 - [ ] Add copy budget from previous month
 
 ### Deliverables
-- User can set monthly budgets by category
-- User can track spending against budget
-- Dashboard shows budget status
+- Household-level budgets (not per-partner)
+- Both partners' spending counts toward budget
+- Visual breakdown of who spent what
 
 ---
 
 ## Sprint 7: Spending Analytics
 **Status:** ⚪ Not Started
-**Goal:** Rich spending insights and month-over-month comparison
+**Goal:** Rich spending insights for the household
 
 ### Tasks
 - [ ] Build spending breakdown chart (pie/donut)
 - [ ] Implement month-over-month comparison
 - [ ] Build spending trends view
+- [ ] Add partner filter/comparison toggle
 - [ ] Add category drill-down
 - [ ] Implement spending insights calculations
 - [ ] Update dashboard spending preview
 - [ ] Add date range selector
 
 ### Deliverables
-- User can view spending by category
-- User can compare spending across months
-- Dashboard shows spending trends
+- Household spending by category
+- Compare spending across months
+- Filter or compare by partner
 
 ---
 
@@ -190,6 +207,7 @@ Development is organized into sprints, each delivering a working increment of th
 - [ ] Implement recurring transaction detection algorithm
 - [ ] Build recurring transactions API
 - [ ] Build recurring payments list view
+- [ ] Show which partner's account for each recurring payment
 - [ ] Add upcoming bills preview to dashboard
 - [ ] Implement manual recurring transaction tagging
 - [ ] Add expected amount tracking
@@ -197,17 +215,17 @@ Development is organized into sprints, each delivering a working increment of th
 
 ### Deliverables
 - Auto-detect recurring transactions
-- Dashboard shows upcoming bills
-- User can manage recurring payment entries
+- Dashboard shows upcoming household bills
+- Clear indicator of which account/partner
 
 ---
 
 ## Sprint 9: Goals
 **Status:** ⚪ Not Started
-**Goal:** Users can set and track savings goals
+**Goal:** Partners can set and track shared savings goals
 
 ### Tasks
-- [ ] Implement goals API (CRUD)
+- [ ] Implement goals API (CRUD, household-level)
 - [ ] Build goals list page
 - [ ] Build add/edit goal modal
 - [ ] Implement progress tracking
@@ -217,8 +235,8 @@ Development is organized into sprints, each delivering a working increment of th
 - [ ] Add goals preview to dashboard
 
 ### Deliverables
-- User can create savings goals
-- User can track progress toward goals
+- Shared household goals
+- Track progress together
 - Dashboard shows goal progress
 
 ---
@@ -229,38 +247,41 @@ Development is organized into sprints, each delivering a working increment of th
 
 ### Tasks
 - [ ] Research SimpleFin Bridge API
-- [ ] Implement SimpleFin authentication flow
+- [ ] Implement SimpleFin authentication flow (one per household)
 - [ ] Implement account fetching
+- [ ] Allow manual assignment of account ownership
 - [ ] Implement transaction syncing
 - [ ] Handle SimpleFin-specific edge cases
 - [ ] Add SimpleFin as connection option in UI
 - [ ] Test with various institutions
 
 ### Deliverables
-- User can connect accounts via SimpleFin
-- Transactions sync from SimpleFin accounts
+- Household can connect one SimpleFin account
+- Transactions sync from SimpleFin
+- Account ownership manually assigned
 
 ---
 
 ## Sprint 11: Wally AI Assistant
 **Status:** ⚪ Not Started
-**Goal:** Users can chat with Wally about their finances
+**Goal:** Partners can chat with Wally about household finances
 
 ### Tasks
-- [ ] Design Wally's personality and system prompt
+- [ ] Design Wally's personality and system prompt (couples-aware)
 - [ ] Implement Claude API integration
-- [ ] Build financial data context aggregation
+- [ ] Build household financial data context aggregation
 - [ ] Implement chat API endpoints
 - [ ] Build chat UI component
 - [ ] Add floating action button (mobile)
-- [ ] Implement conversation history
-- [ ] Add suggested prompts
+- [ ] Implement conversation history (household-level)
+- [ ] Add suggested prompts ("How much did we spend on...")
 - [ ] Build rich response rendering (charts, tables)
+- [ ] Train on "we/us/our" and partner name references
 
 ### Deliverables
-- User can chat with Wally
-- Wally has context of user's financial data
-- Wally provides helpful financial insights
+- Chat with Wally about household finances
+- Wally understands "we" and partner names
+- Conversations shared across household
 
 ---
 
@@ -271,14 +292,14 @@ Development is organized into sprints, each delivering a working increment of th
 ### Tasks
 - [ ] Enable Plaid Investments product
 - [ ] Fetch investment holdings
-- [ ] Display investment accounts
-- [ ] Calculate total investment value
+- [ ] Display investment accounts with partner ownership
+- [ ] Calculate total household investment value
 - [ ] Show basic gain/loss
 - [ ] Add investments preview to dashboard
 
 ### Deliverables
-- User can see investment account values
-- Dashboard shows investment performance
+- See investment account values per partner
+- Dashboard shows combined investment performance
 
 ---
 
@@ -289,18 +310,21 @@ Development is organized into sprints, each delivering a working increment of th
 ### Tasks
 - [ ] Performance audit and optimization
 - [ ] Accessibility audit (WCAG 2.1 AA)
+- [ ] Color contrast verification (purple theme)
 - [ ] Error handling improvements
 - [ ] Loading states and skeletons
 - [ ] Empty states design
-- [ ] Onboarding flow for new users
+- [ ] Onboarding flow for new households
 - [ ] Data export functionality
 - [ ] Mobile gesture refinements
+- [ ] Capacitor native testing (iOS/Android)
 - [ ] Cross-browser testing
 
 ### Deliverables
 - App performs well on mobile
 - All features accessible
 - Polished user experience
+- iOS/Android apps working via Capacitor
 
 ---
 
@@ -319,11 +343,14 @@ Development is organized into sprints, each delivering a working increment of th
 - [ ] Configure backups
 - [ ] Deploy to production
 - [ ] Smoke testing in production
+- [ ] Submit iOS app to App Store
+- [ ] Submit Android app to Play Store
 
 ### Deliverables
-- App live at app.otter.money
+- Web app live at app.otter.money
+- iOS app in App Store
+- Android app in Play Store
 - Monitoring and alerting active
-- Automated deployments working
 
 ---
 
@@ -340,10 +367,10 @@ Development is organized into sprints, each delivering a working increment of th
 - Exchange rate tracking
 - Multi-currency transactions
 
-### Shared Households
-- Invite household members
-- Shared vs personal accounts
-- Permission levels
+### Advanced Household Features
+- More than 2 members (family mode?)
+- Permission levels (view-only partner?)
+- Activity feed ("Partner categorized a transaction")
 
 ### Advanced Reporting
 - Custom date range reports
@@ -351,11 +378,11 @@ Development is organized into sprints, each delivering a working increment of th
 - Year-end summaries
 - Export to tax software
 
-### Mobile Native App
-- React Native or PWA
-- Push notifications
-- Biometric authentication
+### Native Features (Capacitor)
+- Push notifications for budget alerts
+- Biometric authentication (Face ID/Touch ID)
 - Offline support
+- Widgets (iOS/Android)
 
 ---
 

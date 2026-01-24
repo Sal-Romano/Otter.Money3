@@ -6,9 +6,11 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Client Layer                             │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │              React SPA (Mobile-First)                    │    │
+│  │         React SPA (Mobile-First) + Capacitor            │    │
 │  │  • TypeScript • Tailwind CSS • React Query • Zustand    │    │
 │  └─────────────────────────────────────────────────────────┘    │
+│                    ↓                    ↓                        │
+│              [iOS App]            [Android App]                  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -31,6 +33,27 @@
 
 ---
 
+## Brand & Design Tokens
+
+```css
+/* Primary Colors */
+--color-primary: #9F6FBA;        /* rgb(159, 111, 186) */
+--color-primary-light: #B88FCE;
+--color-primary-dark: #7A5090;
+
+/* Neutral */
+--color-white: #FFFFFF;
+--color-gray-50: #F9FAFB;
+--color-gray-900: #111827;
+
+/* Semantic */
+--color-success: #10B981;
+--color-warning: #F59E0B;
+--color-error: #EF4444;
+```
+
+---
+
 ## Technology Stack
 
 ### Frontend
@@ -39,6 +62,7 @@
 | React 18 | UI framework |
 | TypeScript | Type safety |
 | Tailwind CSS | Styling (mobile-first) |
+| Capacitor | iOS/Android native wrapper |
 | React Query (TanStack) | Server state management |
 | Zustand | Client state management |
 | React Router | Navigation |
@@ -68,8 +92,8 @@
 ### External Services
 | Service | Purpose |
 |---------|---------|
-| Plaid | Bank connections (primary) |
-| SimpleFin Bridge | Bank connections (alternative) |
+| Plaid | Bank connections (per-user, multiple) |
+| SimpleFin Bridge | Bank connections (per-household, single) |
 | Anthropic Claude | Wally AI assistant |
 | SendGrid/Resend | Transactional email |
 
@@ -80,38 +104,74 @@
 ### Core Entities
 
 ```prisma
-// User and Authentication
-model User {
+// ============================================
+// HOUSEHOLD & USERS
+// ============================================
+
+model Household {
   id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  name          String
-  emailVerified Boolean   @default(false)
+  name          String?   // "The Smiths" or null for default
+  inviteCode    String    @unique @default(cuid())
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Relations
+  members       User[]
   accounts      Account[]
   categories    Category[]
   budgets       Budget[]
   goals         Goal[]
   rules         CategorizationRule[]
+  simplefinConnection SimplefinConnection?
   conversations Conversation[]
 }
 
-// Financial Accounts
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  emailVerified Boolean   @default(false)
+
+  householdId   String?
+  household     Household? @relation(fields: [householdId], references: [id])
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // User-specific relations
+  plaidItems    PlaidItem[]
+  ownedAccounts Account[] @relation("AccountOwner")
+
+  @@index([householdId])
+}
+
+// ============================================
+// FINANCIAL ACCOUNTS
+// ============================================
+
 model Account {
   id              String      @id @default(cuid())
-  userId          String
-  user            User        @relation(fields: [userId], references: [id])
+
+  // Belongs to household
+  householdId     String
+  household       Household   @relation(fields: [householdId], references: [id])
+
+  // Owned by specific user (or joint)
+  ownerId         String?     // null = joint account
+  owner           User?       @relation("AccountOwner", fields: [ownerId], references: [id])
 
   name            String
   type            AccountType
   subtype         String?
 
-  // For connected accounts
+  // Connection info
+  connectionType  ConnectionType  @default(MANUAL)
   plaidItemId     String?
   plaidAccountId  String?
-  simplefinId     String?
+  simplefinAccountId String?
   connectionStatus ConnectionStatus @default(ACTIVE)
   lastSyncedAt    DateTime?
 
@@ -126,12 +186,13 @@ model Account {
   excludeFromNetWorth Boolean @default(false)
   displayOrder    Int         @default(0)
 
-  isManual        Boolean     @default(false)
-
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
   transactions    Transaction[]
+
+  @@index([householdId])
+  @@index([ownerId])
 }
 
 enum AccountType {
@@ -145,6 +206,12 @@ enum AccountType {
   OTHER
 }
 
+enum ConnectionType {
+  PLAID
+  SIMPLEFIN
+  MANUAL
+}
+
 enum ConnectionStatus {
   ACTIVE
   REQUIRES_REAUTH
@@ -152,13 +219,16 @@ enum ConnectionStatus {
   ERROR
 }
 
-// Transactions
+// ============================================
+// TRANSACTIONS
+// ============================================
+
 model Transaction {
   id              String    @id @default(cuid())
   accountId       String
   account         Account   @relation(fields: [accountId], references: [id])
 
-  // Plaid/SimpleFin reference
+  // External reference (Plaid/SimpleFin)
   externalId      String?   @unique
 
   date            DateTime  @db.Date
@@ -171,9 +241,9 @@ model Transaction {
   categoryId      String?
   category        Category? @relation(fields: [categoryId], references: [id])
 
-  // For manual transactions
+  // Manual vs synced
   isManual        Boolean   @default(false)
-  isAdjustment    Boolean   @default(false)  // Balance adjustment
+  isAdjustment    Boolean   @default(false)  // Balance adjustment for manual accounts
 
   // Metadata
   isPending       Boolean   @default(false)
@@ -191,11 +261,16 @@ model Transaction {
   @@index([categoryId])
 }
 
-// Categories
+// ============================================
+// CATEGORIES & RULES
+// ============================================
+
 model Category {
   id          String        @id @default(cuid())
-  userId      String?       // null = system default
-  user        User?         @relation(fields: [userId], references: [id])
+
+  // null householdId = system default category
+  householdId String?
+  household   Household?    @relation(fields: [householdId], references: [id])
 
   name        String
   type        CategoryType
@@ -206,13 +281,13 @@ model Category {
   parent      Category?     @relation("SubCategories", fields: [parentId], references: [id])
   children    Category[]    @relation("SubCategories")
 
-  isSystem    Boolean       @default(false)
+  isSystem    Boolean       @default(false)  // Can't be deleted
 
   transactions Transaction[]
   budgets      Budget[]
   rules        CategorizationRule[]
 
-  @@unique([userId, name])
+  @@unique([householdId, name])
 }
 
 enum CategoryType {
@@ -221,16 +296,15 @@ enum CategoryType {
   TRANSFER
 }
 
-// Categorization Rules
 model CategorizationRule {
   id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
 
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id])
 
-  // Rule conditions (JSON for flexibility)
+  // Rule conditions
   conditions  Json      // { merchantContains?: string, amountMin?: number, ... }
 
   priority    Int       @default(0)
@@ -238,14 +312,17 @@ model CategorizationRule {
 
   createdAt   DateTime  @default(now())
 
-  @@index([userId])
+  @@index([householdId])
 }
 
-// Budgets
+// ============================================
+// BUDGETS & GOALS
+// ============================================
+
 model Budget {
   id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
 
   categoryId  String
   category    Category  @relation(fields: [categoryId], references: [id])
@@ -258,14 +335,13 @@ model Budget {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@unique([userId, categoryId, period])
+  @@unique([householdId, categoryId, period])
 }
 
-// Goals
 model Goal {
   id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
+  householdId   String
+  household     Household @relation(fields: [householdId], references: [id])
 
   name          String
   targetAmount  Decimal   @db.Decimal(19, 4)
@@ -282,10 +358,15 @@ model Goal {
   updatedAt     DateTime  @updatedAt
 }
 
-// Plaid Items (for token management)
+// ============================================
+// INTEGRATIONS
+// ============================================
+
+// Plaid - multiple per user
 model PlaidItem {
   id              String    @id @default(cuid())
   userId          String
+  user            User      @relation(fields: [userId], references: [id])
 
   itemId          String    @unique  // Plaid's item_id
   accessToken     String              // Encrypted
@@ -293,6 +374,7 @@ model PlaidItem {
   institutionName String?
 
   consentExpiresAt DateTime?
+  cursor          String?   // For transaction sync
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -300,16 +382,32 @@ model PlaidItem {
   @@index([userId])
 }
 
-// Wally Conversations
+// SimpleFin - one per household
+model SimplefinConnection {
+  id              String    @id @default(cuid())
+  householdId     String    @unique
+  household       Household @relation(fields: [householdId], references: [id])
+
+  accessUrl       String    // Encrypted SimpleFin access URL
+  lastSyncedAt    DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ============================================
+// WALLY AI
+// ============================================
+
 model Conversation {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
+  id          String    @id @default(cuid())
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
 
-  messages  Message[]
+  messages    Message[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Message {
@@ -330,93 +428,120 @@ model Message {
 
 ### Authentication
 ```
-POST   /api/auth/register      # Create account
-POST   /api/auth/login         # Login
-POST   /api/auth/logout        # Logout
-POST   /api/auth/refresh       # Refresh token
-POST   /api/auth/forgot        # Request password reset
-POST   /api/auth/reset         # Reset password
-GET    /api/auth/verify/:token # Verify email
+POST   /api/auth/register         # Create account + household
+POST   /api/auth/register/join    # Create account + join household via invite
+POST   /api/auth/login            # Login
+POST   /api/auth/logout           # Logout
+POST   /api/auth/refresh          # Refresh token
+POST   /api/auth/forgot           # Request password reset
+POST   /api/auth/reset            # Reset password
+GET    /api/auth/verify/:token    # Verify email
+```
+
+### Household
+```
+GET    /api/household             # Get current household
+PATCH  /api/household             # Update household name
+GET    /api/household/invite      # Get invite code/link
+POST   /api/household/invite/regenerate  # New invite code
+GET    /api/household/members     # List household members
 ```
 
 ### Accounts
 ```
-GET    /api/accounts           # List all accounts
-POST   /api/accounts           # Create manual account
-GET    /api/accounts/:id       # Get account details
-PATCH  /api/accounts/:id       # Update account
-DELETE /api/accounts/:id       # Remove account
+GET    /api/accounts              # List all household accounts
+POST   /api/accounts              # Create manual account
+GET    /api/accounts/:id          # Get account details
+PATCH  /api/accounts/:id          # Update account
+DELETE /api/accounts/:id          # Remove account
 POST   /api/accounts/:id/balance  # Update balance (manual accounts)
-POST   /api/accounts/:id/sync  # Trigger sync (connected accounts)
+POST   /api/accounts/:id/sync     # Trigger sync (connected accounts)
 ```
 
-### Plaid Integration
+### Plaid Integration (per user)
 ```
-POST   /api/plaid/link-token   # Create link token
-POST   /api/plaid/exchange     # Exchange public token
-POST   /api/plaid/webhook      # Webhook handler
-DELETE /api/plaid/item/:id     # Remove Plaid item
+POST   /api/plaid/link-token      # Create link token for current user
+POST   /api/plaid/exchange        # Exchange public token
+POST   /api/plaid/webhook         # Webhook handler
+DELETE /api/plaid/item/:id        # Remove Plaid item
+```
+
+### SimpleFin Integration (per household)
+```
+GET    /api/simplefin/status      # Get connection status
+POST   /api/simplefin/connect     # Set up SimpleFin connection
+POST   /api/simplefin/sync        # Manual sync
+DELETE /api/simplefin             # Remove SimpleFin connection
 ```
 
 ### Transactions
 ```
-GET    /api/transactions       # List (with filters)
-GET    /api/transactions/:id   # Get transaction
-PATCH  /api/transactions/:id   # Update (category, notes)
-POST   /api/transactions       # Create manual transaction
-DELETE /api/transactions/:id   # Delete (manual only)
+GET    /api/transactions          # List (with filters: partner, account, category, date)
+GET    /api/transactions/:id      # Get transaction
+PATCH  /api/transactions/:id      # Update (category, notes)
+POST   /api/transactions          # Create manual transaction
+DELETE /api/transactions/:id      # Delete (manual only)
 POST   /api/transactions/:id/split  # Split transaction
 ```
 
-### Categories
+### Categories (household-level)
 ```
-GET    /api/categories         # List all categories
-POST   /api/categories         # Create category
-PATCH  /api/categories/:id     # Update category
-DELETE /api/categories/:id     # Delete category
-POST   /api/categories/merge   # Merge categories
-```
-
-### Rules
-```
-GET    /api/rules              # List rules
-POST   /api/rules              # Create rule
-PATCH  /api/rules/:id          # Update rule
-DELETE /api/rules/:id          # Delete rule
-POST   /api/rules/:id/apply    # Apply rule retroactively
+GET    /api/categories            # List all categories
+POST   /api/categories            # Create category
+PATCH  /api/categories/:id        # Update category
+DELETE /api/categories/:id        # Delete category
+POST   /api/categories/merge      # Merge categories
 ```
 
-### Budgets
+### Rules (household-level)
 ```
-GET    /api/budgets            # List budgets (current period)
-GET    /api/budgets/:period    # List budgets for period
-POST   /api/budgets            # Create/update budget
-DELETE /api/budgets/:id        # Delete budget
+GET    /api/rules                 # List rules
+POST   /api/rules                 # Create rule
+PATCH  /api/rules/:id             # Update rule
+DELETE /api/rules/:id             # Delete rule
+POST   /api/rules/:id/apply       # Apply rule retroactively
 ```
 
-### Goals
+### Budgets (household-level)
 ```
-GET    /api/goals              # List goals
-POST   /api/goals              # Create goal
-PATCH  /api/goals/:id          # Update goal
-DELETE /api/goals/:id          # Delete goal
-POST   /api/goals/:id/add      # Add funds to goal
+GET    /api/budgets               # List budgets (current period)
+GET    /api/budgets/:period       # List budgets for period
+POST   /api/budgets               # Create/update budget
+DELETE /api/budgets/:id           # Delete budget
+GET    /api/budgets/spending      # Get spending by partner breakdown
+```
+
+### Goals (household-level)
+```
+GET    /api/goals                 # List goals
+POST   /api/goals                 # Create goal
+PATCH  /api/goals/:id             # Update goal
+DELETE /api/goals/:id             # Delete goal
+POST   /api/goals/:id/add         # Add funds to goal
 ```
 
 ### Dashboard
 ```
-GET    /api/dashboard/summary  # Aggregated dashboard data
-GET    /api/dashboard/networth # Net worth history
-GET    /api/dashboard/spending # Spending by category
-GET    /api/dashboard/recurring # Recurring transactions
+GET    /api/dashboard/summary     # Aggregated household dashboard data
+GET    /api/dashboard/networth    # Net worth history (with partner breakdown)
+GET    /api/dashboard/spending    # Spending by category (with partner breakdown)
+GET    /api/dashboard/recurring   # Recurring transactions
 ```
 
 ### Wally AI
 ```
-POST   /api/wally/chat         # Send message, get response
-GET    /api/wally/conversations # List past conversations
+POST   /api/wally/chat            # Send message, get response
+GET    /api/wally/conversations   # List past conversations
 GET    /api/wally/conversations/:id # Get conversation
 DELETE /api/wally/conversations/:id # Delete conversation
+```
+
+### User Profile
+```
+GET    /api/user/me               # Get current user
+PATCH  /api/user/me               # Update profile
+POST   /api/user/avatar           # Upload avatar
+DELETE /api/user/me               # Delete account (with household implications)
 ```
 
 ---
@@ -429,8 +554,13 @@ DELETE /api/wally/conversations/:id # Delete conversation
 - Refresh tokens stored in HTTP-only cookies
 - Rate limiting: 5 attempts per minute on auth endpoints
 
+### Household Isolation
+- All queries scoped to user's household
+- Users can only access their household's data
+- Invite codes are single-use or time-limited
+
 ### Data Protection
-- All Plaid access tokens encrypted at rest (AES-256)
+- All Plaid/SimpleFin tokens encrypted at rest (AES-256)
 - Database connections use TLS
 - API served over HTTPS only
 - CORS restricted to app domain
@@ -443,11 +573,39 @@ DELETE /api/wally/conversations/:id # Delete conversation
 
 ---
 
+## Capacitor Configuration
+
+### Platforms
+- iOS (primary)
+- Android (secondary)
+- Web (PWA fallback)
+
+### Native Features Used
+- Push notifications (future)
+- Biometric auth (future)
+- Secure storage for tokens
+
+### Build Commands
+```bash
+# Development
+npm run dev              # Web dev server
+npm run ios:dev          # iOS with live reload
+npm run android:dev      # Android with live reload
+
+# Production
+npm run build            # Build web assets
+npx cap sync             # Sync to native projects
+npx cap open ios         # Open in Xcode
+npx cap open android     # Open in Android Studio
+```
+
+---
+
 ## Deployment Architecture
 
 ### Development
 ```
-localhost:3000  →  React dev server
+localhost:3000  →  React dev server (Vite)
 localhost:4000  →  API server
 localhost:5432  →  PostgreSQL
 localhost:6379  →  Redis
@@ -459,6 +617,9 @@ app.otter.money  →  Nginx  →  React (static files)
                           →  API (Node.js)
                           →  PostgreSQL (managed)
                           →  Redis (managed)
+
+App Store       →  iOS app (Capacitor)
+Play Store      →  Android app (Capacitor)
 ```
 
 ---
@@ -469,17 +630,10 @@ Using BullMQ for job processing:
 
 | Job | Schedule | Purpose |
 |-----|----------|---------|
-| `sync-transactions` | Webhook-triggered | Fetch new transactions from Plaid |
+| `sync-plaid-transactions` | Webhook-triggered | Fetch new transactions from Plaid |
+| `sync-simplefin` | Every 4 hours | Fetch from SimpleFin |
 | `apply-rules` | On new transactions | Auto-categorize transactions |
 | `refresh-balances` | Every 4 hours | Update account balances |
 | `detect-recurring` | Daily | Identify recurring transactions |
 | `cleanup-sessions` | Daily | Remove expired sessions |
-
----
-
-## Monitoring & Logging
-
-- **Application Logs:** Structured JSON logs with request IDs
-- **Error Tracking:** Sentry integration
-- **Metrics:** Response times, error rates, sync success rates
-- **Health Checks:** `/api/health` endpoint for uptime monitoring
+| `send-budget-alerts` | Daily | Notify households approaching limits |
