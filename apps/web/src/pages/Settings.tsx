@@ -34,7 +34,7 @@ export default function Settings() {
 
         if (membersRes.ok) {
           const { data } = await membersRes.json();
-          setMembers(data.members);
+          setMembers(data);
         }
 
         if (inviteRes.ok) {
