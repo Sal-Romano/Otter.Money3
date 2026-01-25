@@ -7,27 +7,36 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // Create default system categories
+  // These have householdId = null and are available to all households
   const categoryTypes: CategoryType[] = ['INCOME', 'EXPENSE', 'TRANSFER'];
 
   for (const type of categoryTypes) {
     const categories = DEFAULT_CATEGORIES[type];
     for (const cat of categories) {
-      await prisma.category.upsert({
+      // Check if category already exists
+      const existing = await prisma.category.findFirst({
         where: {
-          householdId_name: {
-            householdId: null as unknown as string, // System categories have no household
-            name: cat.name,
-          },
-        },
-        update: {},
-        create: {
           name: cat.name,
-          type,
-          icon: cat.icon,
+          type: type,
           isSystem: true,
           householdId: null,
         },
       });
+
+      if (!existing) {
+        await prisma.category.create({
+          data: {
+            name: cat.name,
+            type,
+            icon: cat.icon,
+            isSystem: true,
+            householdId: null,
+          },
+        });
+        console.log(`  Created category: ${cat.name}`);
+      } else {
+        console.log(`  Category exists: ${cat.name}`);
+      }
     }
   }
 
