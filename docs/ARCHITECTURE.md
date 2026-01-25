@@ -95,7 +95,7 @@
 | Plaid | Bank connections (per-user, multiple) |
 | SimpleFin Bridge | Bank connections (per-household, single) |
 | Anthropic Claude | Wally AI assistant |
-| SendGrid/Resend | Transactional email |
+| AWS SES | Transactional email (password reset, notifications) |
 
 ---
 
@@ -605,9 +605,9 @@ npx cap open android     # Open in Android Studio
 
 ### Development
 ```
-localhost:3000  →  React dev server (Vite)
+localhost:3001  →  React dev server (Vite)
 localhost:4000  →  API server
-localhost:5432  →  PostgreSQL
+localhost:5433  →  PostgreSQL
 localhost:6379  →  Redis
 ```
 
@@ -637,3 +637,37 @@ Using BullMQ for job processing:
 | `detect-recurring` | Daily | Identify recurring transactions |
 | `cleanup-sessions` | Daily | Remove expired sessions |
 | `send-budget-alerts` | Daily | Notify households approaching limits |
+
+---
+
+## Email Service (AWS SES)
+
+Transactional emails are sent via AWS Simple Email Service (SES).
+
+### Configuration
+
+```bash
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-east-1
+EMAIL_FROM=no-reply@otter.money
+```
+
+### Setup Requirements
+
+1. **Verified Domain**: `otter.money` must be verified in SES
+2. **IAM User**: Create user with `ses:SendEmail` permission
+3. **Production Mode**: Request SES production access (sandbox limits to verified emails only)
+
+### Email Templates
+
+| Email | Trigger | Description |
+|-------|---------|-------------|
+| Password Reset | `POST /api/auth/forgot-password` | Reset link valid for 1 hour |
+| Welcome | Account creation | Welcome + getting started tips |
+| Partner Joined | Partner joins household | Notification to existing partner |
+| Budget Alert | Daily job | Approaching/exceeded budget |
+
+### Development
+
+In development (no AWS credentials), emails are logged to console instead of sent.

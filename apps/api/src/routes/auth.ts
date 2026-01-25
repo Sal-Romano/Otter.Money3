@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ERROR_CODES } from '@otter-money/shared';
 import { prisma } from '../utils/prisma';
 import { AppError } from '../middleware/error';
+import { sendPasswordResetEmail } from '../services/email';
 
 export const authRouter = Router();
 
@@ -267,8 +268,10 @@ authRouter.post('/forgot-password', async (req, res, next) => {
       },
     });
 
-    // In production, send email here with reset link
-    // For now, we'll return the token in development for testing
+    // Send password reset email
+    await sendPasswordResetEmail(user.email, token, user.name);
+
+    // In dev, also return token for testing without email
     const isDev = process.env.NODE_ENV !== 'production';
 
     res.json({
