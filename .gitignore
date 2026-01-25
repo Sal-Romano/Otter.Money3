@@ -69,3 +69,4 @@ temp/
 *.key
 credentials.json
 secrets.json
+*.tsbuildinfo
