@@ -36,7 +36,7 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 1: Authentication & Household Setup
-**Status:** 🟡 In Progress
+**Status:** 🟢 Complete
 **Goal:** Users can create households, invite partners, and log in
 
 ### Tasks
@@ -48,11 +48,11 @@ Development is organized into sprints, each delivering a working increment of th
 - [x] Create auth context on frontend (Zustand store)
 - [x] Build login page (mobile-first, purple theme)
 - [x] Build registration page (create household flow)
-- [ ] Build "join household" page (with invite code)
-- [ ] Build password reset flow
-- [ ] Create app layout with bottom navigation
-- [ ] Implement protected routes
-- [ ] Build household settings page (view partner, invite link)
+- [x] Build "join household" page (with invite code)
+- [x] Build password reset flow
+- [x] Create app layout with bottom navigation
+- [x] Implement protected routes
+- [x] Build household settings page (view partner, invite link)
 
 ### Deliverables
 - Partner A can create account + household

@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth';
 
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { setAuth } = useAuthStore();
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,25 +13,46 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error?.message || 'Login failed');
+        throw new Error(data.error?.message || 'Request failed');
       }
 
-      const { data } = await response.json();
-      setAuth(data.user, data.household, data.accessToken);
+      setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Request failed');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+        <div className="mb-8 text-center">
+          <img
+            src="/images/otters_logo_vector_nobg.svg"
+            alt="Otter Money"
+            className="mx-auto h-24 w-24"
+          />
+          <h1 className="mt-4 text-2xl font-bold text-gray-900">Check your email</h1>
+          <p className="mt-2 max-w-sm text-gray-600">
+            If an account exists for {email}, you'll receive a password reset link shortly.
+          </p>
+        </div>
+
+        <Link to="/login" className="btn-primary">
+          Back to sign in
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
@@ -44,8 +63,8 @@ export default function Login() {
           alt="Otter Money"
           className="mx-auto h-24 w-24"
         />
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">Welcome back</h1>
-        <p className="mt-1 text-gray-600">Sign in to your household</p>
+        <h1 className="mt-4 text-2xl font-bold text-gray-900">Forgot password?</h1>
+        <p className="mt-1 text-gray-600">Enter your email to reset it</p>
       </div>
 
       {/* Form */}
@@ -69,43 +88,17 @@ export default function Login() {
           />
         </div>
 
-        <div>
-          <div className="flex items-center justify-between">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <Link to="/forgot-password" className="text-sm text-primary hover:text-primary-600">
-              Forgot password?
-            </Link>
-          </div>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input mt-1"
-            placeholder="••••••••"
-            required
-          />
-        </div>
-
         <button type="submit" disabled={isLoading} className="btn-primary w-full">
-          {isLoading ? 'Signing in...' : 'Sign in'}
+          {isLoading ? 'Sending...' : 'Send reset link'}
         </button>
       </form>
 
       {/* Links */}
       <div className="mt-6 text-center text-sm">
         <p className="text-gray-600">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-medium text-primary hover:text-primary-600">
-            Create household
-          </Link>
-        </p>
-        <p className="mt-2 text-gray-600">
-          Have an invite?{' '}
-          <Link to="/join" className="font-medium text-primary hover:text-primary-600">
-            Join household
+          Remember your password?{' '}
+          <Link to="/login" className="font-medium text-primary hover:text-primary-600">
+            Sign in
           </Link>
         </p>
       </div>

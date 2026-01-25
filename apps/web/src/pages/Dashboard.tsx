@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 
 export default function Dashboard() {
@@ -40,9 +41,9 @@ export default function Dashboard() {
       <section className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
-          <a href="/transactions" className="text-sm text-primary">
+          <Link to="/transactions" className="text-sm text-primary">
             View all
-          </a>
+          </Link>
         </div>
         <div className="card">
           <p className="py-8 text-center text-sm text-gray-500">
@@ -55,9 +56,9 @@ export default function Dashboard() {
       <section className="mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Budget Status</h2>
-          <a href="/budget" className="text-sm text-primary">
+          <Link to="/budget" className="text-sm text-primary">
             View all
-          </a>
+          </Link>
         </div>
         <div className="card">
           <p className="py-8 text-center text-sm text-gray-500">

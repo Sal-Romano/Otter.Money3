@@ -5,7 +5,10 @@ import { useAuthStore } from './stores/auth';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import JoinHousehold from './pages/JoinHousehold';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -56,6 +59,22 @@ export default function App() {
           </PublicRoute>
         }
       />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicRoute>
+            <ResetPassword />
+          </PublicRoute>
+        }
+      />
 
       {/* Protected routes */}
       <Route
@@ -70,7 +89,7 @@ export default function App() {
         <Route path="transactions" element={<div className="p-4">Transactions - Coming Soon</div>} />
         <Route path="accounts" element={<div className="p-4">Accounts - Coming Soon</div>} />
         <Route path="budget" element={<div className="p-4">Budget - Coming Soon</div>} />
-        <Route path="settings" element={<div className="p-4">Settings - Coming Soon</div>} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Catch all */}

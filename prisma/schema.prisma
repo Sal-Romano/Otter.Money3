@@ -40,10 +40,24 @@ model User {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  plaidItems    PlaidItem[]
-  ownedAccounts Account[]   @relation("AccountOwner")
+  plaidItems         PlaidItem[]
+  ownedAccounts      Account[]            @relation("AccountOwner")
+  passwordResetTokens PasswordResetToken[]
 
   @@index([householdId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
 }
 
 // ============================================

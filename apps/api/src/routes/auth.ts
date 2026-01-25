@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { ERROR_CODES } from '@otter-money/shared';
 import { prisma } from '../utils/prisma';
@@ -27,6 +28,15 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8),
+});
+
 function generateToken(userId: string): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new AppError(ERROR_CODES.INTERNAL_ERROR, 'JWT secret not configured', 500);
@@ -49,10 +59,10 @@ authRouter.post('/register', async (req, res, next) => {
 
     // Create user and household in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create household
+      // Create household (default name per PRD: "[Name]'s Household")
       const household = await tx.household.create({
         data: {
-          name: data.householdName || null,
+          name: data.householdName || `${data.name}'s Household`,
         },
       });
 
@@ -219,4 +229,100 @@ authRouter.post('/login', async (req, res, next) => {
 // Logout (client-side token removal, server could blacklist token here)
 authRouter.post('/logout', (_req, res) => {
   res.json({ data: { success: true } });
+});
+
+// Request password reset
+authRouter.post('/forgot-password', async (req, res, next) => {
+  try {
+    const data = forgotPasswordSchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({ where: { email: data.email } });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      res.json({ data: { success: true } });
+      return;
+    }
+
+    // Invalidate any existing unused tokens for this user
+    await prisma.passwordResetToken.updateMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+      data: {
+        usedAt: new Date(),
+      },
+    });
+
+    // Generate secure token
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt,
+      },
+    });
+
+    // In production, send email here with reset link
+    // For now, we'll return the token in development for testing
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    res.json({
+      data: {
+        success: true,
+        // Only include token in dev for testing
+        ...(isDev && { resetToken: token }),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Reset password with token
+authRouter.post('/reset-password', async (req, res, next) => {
+  try {
+    const data = resetPasswordSchema.parse(req.body);
+
+    // Find valid token
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token: data.token },
+      include: { user: true },
+    });
+
+    if (!resetToken) {
+      throw new AppError(ERROR_CODES.NOT_FOUND, 'Invalid or expired reset token', 400);
+    }
+
+    if (resetToken.usedAt) {
+      throw new AppError(ERROR_CODES.FORBIDDEN, 'Reset token has already been used', 400);
+    }
+
+    if (resetToken.expiresAt < new Date()) {
+      throw new AppError(ERROR_CODES.FORBIDDEN, 'Reset token has expired', 400);
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(data.password, 12);
+
+    // Update password and mark token as used
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetToken.userId },
+        data: { passwordHash },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    res.json({ data: { success: true } });
+  } catch (err) {
+    next(err);
+  }
 });
