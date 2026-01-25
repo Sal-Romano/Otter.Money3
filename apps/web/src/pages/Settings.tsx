@@ -39,7 +39,8 @@ export default function Settings() {
 
         if (inviteRes.ok) {
           const { data } = await inviteRes.json();
-          setInviteUrl(data.inviteUrl);
+          // Build URL client-side so it uses correct domain (dev.otter.money, localhost, etc.)
+          setInviteUrl(`${window.location.origin}/join/${data.inviteCode}`);
         }
       } catch (err) {
         console.error('Failed to fetch settings data:', err);
