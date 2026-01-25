@@ -67,7 +67,7 @@ householdRouter.get('/invite', async (req, res, next) => {
     res.json({
       data: {
         inviteCode: household.inviteCode,
-        inviteUrl: `${process.env.APP_URL || 'http://localhost:3000'}/join/${household.inviteCode}`,
+        inviteUrl: `${process.env.APP_URL || 'http://localhost:3001'}/join/${household.inviteCode}`,
       },
     });
   } catch (err) {
