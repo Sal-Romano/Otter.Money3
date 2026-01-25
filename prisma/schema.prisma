@@ -29,22 +29,28 @@ model Household {
 }
 
 model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
+  id            String         @id @default(cuid())
+  email         String         @unique
   passwordHash  String
   name          String
   avatarUrl     String?
-  emailVerified Boolean    @default(false)
+  emailVerified Boolean        @default(false)
   householdId   String?
-  household     Household? @relation(fields: [householdId], references: [id])
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  household     Household?     @relation(fields: [householdId], references: [id])
+  householdRole HouseholdRole  @default(PARTNER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  plaidItems         PlaidItem[]
-  ownedAccounts      Account[]            @relation("AccountOwner")
+  plaidItems          PlaidItem[]
+  ownedAccounts       Account[]            @relation("AccountOwner")
   passwordResetTokens PasswordResetToken[]
 
   @@index([householdId])
+}
+
+enum HouseholdRole {
+  ORGANIZER  // Created the household, can manage members and settings
+  PARTNER    // Invited member, full data access but can't manage household
 }
 
 model PasswordResetToken {

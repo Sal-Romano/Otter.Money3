@@ -19,11 +19,20 @@ The app is built around the concept of a **Household** - a shared financial unit
 
 ### Key Principles
 
-1. **One Household, Two Users** - A household has exactly two members (partners)
+1. **One Household, Two Users** - A household has exactly two members (partners) currently; future expansion to 5 members planned
 2. **Shared Financial Picture** - All accounts, transactions, and budgets belong to the household
 3. **Individual Ownership** - Each account is "owned by" a specific partner for clarity
 4. **Individual Actions** - Each partner logs in separately and can categorize/manage transactions
 5. **Shared Visibility** - Both partners see everything; no hidden accounts or transactions
+
+### Household Roles
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| **Organizer** | The partner who created the household | Full data access + manage members, regenerate invite links, remove partners |
+| **Partner** | Invited member who joined the household | Full data access (accounts, transactions, budgets, goals) |
+
+**Partner Removal:** When an organizer removes a partner, their linked accounts become "joint" accounts managed by the organizer. A warning is shown indicating how many accounts/transactions will be affected.
 
 ### Data Model Summary
 

@@ -128,15 +128,16 @@ model Household {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String         @id @default(cuid())
+  email         String         @unique
   passwordHash  String
   name          String
   avatarUrl     String?
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean        @default(false)
 
   householdId   String?
-  household     Household? @relation(fields: [householdId], references: [id])
+  household     Household?     @relation(fields: [householdId], references: [id])
+  householdRole HouseholdRole  @default(PARTNER)
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -146,6 +147,11 @@ model User {
   ownedAccounts Account[] @relation("AccountOwner")
 
   @@index([householdId])
+}
+
+enum HouseholdRole {
+  ORGANIZER  // Created the household, can manage members
+  PARTNER    // Invited member, full data access
 }
 
 // ============================================
@@ -440,11 +446,13 @@ GET    /api/auth/verify/:token    # Verify email
 
 ### Household
 ```
-GET    /api/household             # Get current household
-PATCH  /api/household             # Update household name
-GET    /api/household/invite      # Get invite code/link
-POST   /api/household/invite/regenerate  # New invite code
-GET    /api/household/members     # List household members
+GET    /api/household                           # Get current household
+PATCH  /api/household                           # Update household name
+GET    /api/household/invite                    # Get invite code/link
+POST   /api/household/invite/regenerate         # New invite code (organizer only)
+GET    /api/household/members                   # List household members
+GET    /api/household/members/:id/removal-impact # Get impact of removing member (organizer only)
+DELETE /api/household/members/:id               # Remove partner from household (organizer only)
 ```
 
 ### Accounts

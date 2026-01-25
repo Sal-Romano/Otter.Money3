@@ -67,13 +67,14 @@ authRouter.post('/register', async (req, res, next) => {
         },
       });
 
-      // Create user
+      // Create user as ORGANIZER (household creator)
       const user = await tx.user.create({
         data: {
           email: data.email,
           passwordHash,
           name: data.name,
           householdId: household.id,
+          householdRole: 'ORGANIZER',
         },
       });
 
@@ -91,6 +92,7 @@ authRouter.post('/register', async (req, res, next) => {
           avatarUrl: result.user.avatarUrl,
           emailVerified: result.user.emailVerified,
           householdId: result.user.householdId,
+          householdRole: result.user.householdRole,
           createdAt: result.user.createdAt,
           updatedAt: result.user.updatedAt,
         },
@@ -138,13 +140,14 @@ authRouter.post('/register/join', async (req, res, next) => {
     // Hash password
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    // Create user
+    // Create user as PARTNER (joining existing household)
     const user = await prisma.user.create({
       data: {
         email: data.email,
         passwordHash,
         name: data.name,
         householdId: household.id,
+        householdRole: 'PARTNER',
       },
     });
 
@@ -159,6 +162,7 @@ authRouter.post('/register/join', async (req, res, next) => {
           avatarUrl: user.avatarUrl,
           emailVerified: user.emailVerified,
           householdId: user.householdId,
+          householdRole: user.householdRole,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },
@@ -207,6 +211,7 @@ authRouter.post('/login', async (req, res, next) => {
           avatarUrl: user.avatarUrl,
           emailVerified: user.emailVerified,
           householdId: user.householdId,
+          householdRole: user.householdRole,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         },

@@ -2,6 +2,8 @@
 // HOUSEHOLD & USERS
 // ============================================
 
+export type HouseholdRole = 'ORGANIZER' | 'PARTNER';
+
 export interface Household {
   id: string;
   name: string | null;
@@ -17,6 +19,7 @@ export interface User {
   avatarUrl: string | null;
   emailVerified: boolean;
   householdId: string | null;
+  householdRole: HouseholdRole;
   createdAt: Date;
   updatedAt: Date;
 }
