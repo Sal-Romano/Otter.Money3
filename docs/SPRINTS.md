@@ -87,20 +87,20 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 3: Manual Transactions & Categories
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Partners can manually track transactions with shared categories
 
 ### Tasks
-- [ ] Implement transactions API (CRUD, scoped to household)
-- [ ] Implement categories API with default categories (household-level)
-- [ ] Build transactions list page with filters
-- [ ] Add partner filter to transaction list
-- [ ] Show which partner's account each transaction belongs to
-- [ ] Build add/edit transaction modal
-- [ ] Build category selector component
-- [ ] Build category management in settings (shared for household)
-- [ ] Implement transaction search
-- [ ] Add transactions preview to dashboard
+- [x] Implement transactions API (CRUD, scoped to household)
+- [x] Implement categories API with default categories (household-level)
+- [x] Build transactions list page with filters
+- [x] Add partner filter to transaction list
+- [x] Show which partner's account each transaction belongs to
+- [x] Build add/edit transaction modal
+- [x] Build category selector component
+- [x] Build category management in settings (shared for household)
+- [x] Implement transaction search
+- [x] Add transactions preview to dashboard
 
 ### Deliverables
 - Either partner can add transactions to any account

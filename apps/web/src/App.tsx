@@ -9,6 +9,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
+import Transactions from './pages/Transactions';
 import Settings from './pages/Settings';
 import NoHousehold from './pages/NoHousehold';
 import Layout from './components/Layout';
@@ -93,7 +94,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="transactions" element={<div className="p-4">Transactions - Coming Soon</div>} />
+        <Route path="transactions" element={<Transactions />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="budget" element={<div className="p-4">Budget - Coming Soon</div>} />
         <Route path="settings" element={<Settings />} />

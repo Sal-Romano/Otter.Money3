@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
+import { useCategories, useCreateCategory, useDeleteCategory } from '../hooks/useCategories';
+import type { CategoryType } from '@otter-money/shared';
 
 interface HouseholdMember {
   id: string;
@@ -331,6 +333,9 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* Categories */}
+      <CategoriesSection />
+
       {/* About */}
       <section className="card">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">About</h2>
@@ -518,5 +523,203 @@ export default function Settings() {
         </div>
       )}
     </div>
+  );
+}
+
+// Categories management section
+function CategoriesSection() {
+  const { data: categories, isLoading } = useCategories();
+  const createCategory = useCreateCategory();
+  const deleteCategory = useDeleteCategory();
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryType, setNewCategoryType] = useState<CategoryType>('EXPENSE');
+  const [expandedType, setExpandedType] = useState<CategoryType | null>(null);
+
+  const groupedCategories = categories?.reduce(
+    (acc, cat) => {
+      if (!acc[cat.type]) acc[cat.type] = [];
+      acc[cat.type].push(cat);
+      return acc;
+    },
+    {} as Record<CategoryType, typeof categories>
+  );
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+
+    try {
+      await createCategory.mutateAsync({
+        name: newCategoryName.trim(),
+        type: newCategoryType,
+      });
+      setNewCategoryName('');
+      setShowAddForm(false);
+    } catch (err) {
+      console.error('Failed to create category:', err);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('Delete this category?')) return;
+
+    try {
+      await deleteCategory.mutateAsync(id);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete category');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <section className="card">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Categories</h2>
+        <div className="animate-pulse space-y-2">
+          <div className="h-8 bg-gray-200 rounded" />
+          <div className="h-8 bg-gray-200 rounded" />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className="text-sm text-primary hover:text-primary-600"
+        >
+          {showAddForm ? 'Cancel' : '+ Add Category'}
+        </button>
+      </div>
+
+      {/* Add category form */}
+      {showAddForm && (
+        <form onSubmit={handleAddCategory} className="mb-4 p-3 rounded-lg bg-gray-50 space-y-3">
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="Category name"
+            className="input"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <select
+              value={newCategoryType}
+              onChange={(e) => setNewCategoryType(e.target.value as CategoryType)}
+              className="input flex-1"
+            >
+              <option value="EXPENSE">Expense</option>
+              <option value="INCOME">Income</option>
+              <option value="TRANSFER">Transfer</option>
+            </select>
+            <button
+              type="submit"
+              disabled={!newCategoryName.trim() || createCategory.isPending}
+              className="btn-primary"
+            >
+              {createCategory.isPending ? 'Adding...' : 'Add'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Categories list by type */}
+      <div className="space-y-2">
+        {(['EXPENSE', 'INCOME', 'TRANSFER'] as CategoryType[]).map((type) => {
+          const typeCats = groupedCategories?.[type] || [];
+          const isExpanded = expandedType === type;
+          const customCats = typeCats.filter((c) => !c.isSystem);
+          const systemCats = typeCats.filter((c) => c.isSystem);
+
+          return (
+            <div key={type} className="border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setExpandedType(isExpanded ? null : type)}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50"
+              >
+                <span className="font-medium text-gray-700">
+                  {type === 'EXPENSE' ? 'Expenses' : type === 'INCOME' ? 'Income' : 'Transfers'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{typeCats.length}</span>
+                  <ChevronIcon className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="border-t border-gray-200 divide-y divide-gray-100">
+                  {/* Custom categories (can delete) */}
+                  {customCats.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: cat.color || '#9CA3AF' }}
+                        />
+                        <span className="text-sm text-gray-900">{cat.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">
+                          {(cat as any).transactionCount || 0} txns
+                        </span>
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="text-gray-400 hover:text-error-600"
+                          title="Delete category"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* System categories (cannot delete) */}
+                  {systemCats.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between px-3 py-2 bg-gray-50">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: cat.color || '#9CA3AF' }}
+                        />
+                        <span className="text-sm text-gray-600">{cat.name}</span>
+                        <span className="text-xs text-gray-400">(default)</span>
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        {(cat as any).transactionCount || 0} txns
+                      </span>
+                    </div>
+                  ))}
+
+                  {typeCats.length === 0 && (
+                    <p className="px-3 py-2 text-sm text-gray-500">No categories</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ChevronIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
   );
 }
