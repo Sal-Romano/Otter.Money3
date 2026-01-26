@@ -9,6 +9,7 @@ import { householdRouter } from './routes/household';
 import { accountsRouter } from './routes/accounts';
 import { transactionsRouter } from './routes/transactions';
 import { categoriesRouter } from './routes/categories';
+import { dashboardRouter } from './routes/dashboard';
 import { healthRouter } from './routes/health';
 
 const app = express();
@@ -31,6 +32,7 @@ app.use('/api/household', householdRouter);
 app.use('/api/accounts', accountsRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 // Error handler
 app.use(errorHandler);

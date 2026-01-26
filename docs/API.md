@@ -483,13 +483,249 @@ The partner's accounts become joint accounts.
 
 ---
 
-## Upcoming Endpoints
+## Accounts Endpoints
 
-### Sprint 2: Accounts
-- `GET /accounts` - List all household accounts
-- `POST /accounts` - Create manual account
-- `PATCH /accounts/:id` - Update account
-- `DELETE /accounts/:id` - Delete account
+All account endpoints require authentication and household membership.
+
+### GET /accounts
+List all accounts in the household.
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "acc123",
+      "householdId": "hh123",
+      "ownerId": "abc123",
+      "name": "Chase Checking",
+      "type": "CHECKING",
+      "subtype": null,
+      "connectionType": "MANUAL",
+      "connectionStatus": "ACTIVE",
+      "lastSyncedAt": null,
+      "currentBalance": 5000.00,
+      "availableBalance": 5000.00,
+      "currency": "USD",
+      "isHidden": false,
+      "excludeFromBudget": false,
+      "excludeFromNetWorth": false,
+      "displayOrder": 1,
+      "owner": {
+        "id": "abc123",
+        "name": "John Doe",
+        "avatarUrl": null
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET /accounts/summary/totals
+Get aggregated totals for the household's accounts.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "totalAssets": 25000.00,
+    "totalLiabilities": 5000.00,
+    "netWorth": 20000.00,
+    "byPartner": {
+      "abc123": { "assets": 15000.00, "liabilities": 2000.00 },
+      "abc456": { "assets": 5000.00, "liabilities": 3000.00 },
+      "joint": { "assets": 5000.00, "liabilities": 0 }
+    }
+  }
+}
+```
+
+---
+
+### GET /accounts/:id
+Get a single account by ID.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "acc123",
+    "name": "Chase Checking",
+    "type": "CHECKING",
+    "currentBalance": 5000.00,
+    "owner": { "id": "abc123", "name": "John Doe", "avatarUrl": null }
+  }
+}
+```
+
+**Errors:**
+- `404` - Account not found
+- `403` - Account belongs to another household
+
+---
+
+### POST /accounts
+Create a new manual account.
+
+**Request:**
+```json
+{
+  "name": "Chase Checking",
+  "type": "CHECKING",
+  "ownerId": "abc123",
+  "currentBalance": 5000.00,
+  "currency": "USD",
+  "isHidden": false,
+  "excludeFromBudget": false,
+  "excludeFromNetWorth": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| name | string | Yes | Account name (1-100 chars) |
+| type | enum | Yes | CHECKING, SAVINGS, CREDIT, INVESTMENT, LOAN, MORTGAGE, ASSET, OTHER |
+| ownerId | string | No | Owner user ID. Null for joint accounts. |
+| currentBalance | number | Yes | Initial balance |
+| currency | string | No | Currency code (default: USD) |
+| isHidden | boolean | No | Hide from views (default: false) |
+| excludeFromBudget | boolean | No | Exclude from budget (default: false) |
+| excludeFromNetWorth | boolean | No | Exclude from net worth (default: false) |
+
+**Response (201):**
+```json
+{
+  "data": {
+    "id": "acc123",
+    "name": "Chase Checking",
+    "type": "CHECKING",
+    "currentBalance": 5000.00,
+    "owner": { "id": "abc123", "name": "John Doe", "avatarUrl": null }
+  }
+}
+```
+
+**Errors:**
+- `400` - Owner must be a member of the household
+
+---
+
+### PATCH /accounts/:id
+Update an existing account.
+
+**Request:**
+```json
+{
+  "name": "Updated Account Name",
+  "ownerId": null
+}
+```
+
+All fields are optional. Cannot change `type` for connected (Plaid/SimpleFin) accounts.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "acc123",
+    "name": "Updated Account Name",
+    "ownerId": null,
+    "owner": null
+  }
+}
+```
+
+---
+
+### DELETE /accounts/:id
+Delete an account. For manual accounts, this deletes the account and all transactions. For connected accounts, this marks them as disconnected.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "message": "Account deleted"
+  }
+}
+```
+
+---
+
+### POST /accounts/:id/balance
+Update the balance of a manual account. Creates an adjustment transaction.
+
+**Request:**
+```json
+{
+  "newBalance": 5500.00,
+  "note": "End of month reconciliation"
+}
+```
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "acc123",
+    "currentBalance": 5500.00,
+    "availableBalance": 5500.00
+  }
+}
+```
+
+**Errors:**
+- `400` - Balance can only be manually updated for manual accounts
+
+---
+
+## Dashboard Endpoints
+
+### GET /dashboard/summary
+Get aggregated dashboard data for the household.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "netWorth": 20000.00,
+    "totalAssets": 25000.00,
+    "totalLiabilities": 5000.00,
+    "byPartner": {
+      "abc123": { "assets": 15000.00, "liabilities": 2000.00, "netWorth": 13000.00 },
+      "joint": { "assets": 5000.00, "liabilities": 0, "netWorth": 5000.00 }
+    },
+    "memberNames": {
+      "abc123": "John Doe",
+      "abc456": "Jane Doe",
+      "joint": "Joint"
+    },
+    "recentTransactions": [],
+    "accountCount": 3
+  }
+}
+```
+
+---
+
+### GET /dashboard/networth/history
+Get net worth history for charting.
+
+**Response (200):**
+```json
+{
+  "data": [
+    { "date": "2024-01", "total": 18000, "assets": 23000, "liabilities": 5000 },
+    { "date": "2024-02", "total": 19000, "assets": 24000, "liabilities": 5000 },
+    { "date": "2024-03", "total": 20000, "assets": 25000, "liabilities": 5000 }
+  ]
+}
+```
+
+---
+
+## Upcoming Endpoints
 
 ### Sprint 3: Transactions
 - `GET /transactions` - List transactions (with filters)
@@ -497,10 +733,9 @@ The partner's accounts become joint accounts.
 - `PATCH /transactions/:id` - Update transaction
 - `DELETE /transactions/:id` - Delete transaction
 
-### Sprint 4: Categories
-- `GET /categories` - List categories
-- `POST /categories` - Create category
-- `PATCH /categories/:id` - Update category
-- `DELETE /categories/:id` - Delete category
+### Sprint 4: Plaid Integration
+- `POST /plaid/link-token` - Create link token
+- `POST /plaid/exchange` - Exchange public token
+- `POST /plaid/webhook` - Webhook handler
 
 *See [SPRINTS.md](./SPRINTS.md) for full roadmap.*

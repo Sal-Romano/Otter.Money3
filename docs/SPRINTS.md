@@ -63,20 +63,20 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 2: Manual Accounts & Dashboard Foundation
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Partners can add manual accounts and see basic dashboard
 
 ### Tasks
-- [ ] Implement accounts API (CRUD, scoped to household)
-- [ ] Add account ownership (which partner or "joint")
-- [ ] Build accounts list page with partner indicators
-- [ ] Build add/edit account modal (select owner)
-- [ ] Implement balance update with adjustment transactions
-- [ ] Build basic dashboard layout
-- [ ] Implement household net worth calculation
-- [ ] Build net worth chart component
-- [ ] Show partner breakdown on net worth
-- [ ] Create account type icons/styling
+- [x] Implement accounts API (CRUD, scoped to household)
+- [x] Add account ownership (which partner or "joint")
+- [x] Build accounts list page with partner indicators
+- [x] Build add/edit account modal (select owner)
+- [x] Implement balance update with adjustment transactions
+- [x] Build basic dashboard layout
+- [x] Implement household net worth calculation
+- [x] Build net worth chart component
+- [x] Show partner breakdown on net worth
+- [x] Create account type icons/styling
 
 ### Deliverables
 - Either partner can add manual accounts

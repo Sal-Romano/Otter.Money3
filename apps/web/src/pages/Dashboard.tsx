@@ -1,8 +1,35 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
+import { useDashboardSummary, useNetWorthHistory } from '../hooks/useDashboard';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function Dashboard() {
   const { user, household } = useAuthStore();
+  const { data: summary, isLoading } = useDashboardSummary();
+  const { data: netWorthHistory } = useNetWorthHistory();
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatCurrencyFull = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
+
+  // Format date for chart
+  const formatChartDate = (dateStr: string) => {
+    const [year, month] = dateStr.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return monthNames[parseInt(month) - 1];
+  };
 
   return (
     <div className="px-4 py-6">
@@ -19,23 +46,120 @@ export default function Dashboard() {
       {/* Net Worth Card */}
       <div className="card mb-4 bg-primary text-white">
         <p className="text-sm opacity-80">Household Net Worth</p>
-        <p className="mt-1 text-3xl font-bold">$0.00</p>
-        <p className="mt-1 text-sm opacity-80">
-          <span className="text-success-300">+$0.00</span> this month
-        </p>
+        {isLoading ? (
+          <div className="mt-1 h-9 w-32 animate-pulse rounded bg-white/20" />
+        ) : (
+          <p className="mt-1 text-3xl font-bold">
+            {summary ? formatCurrency(summary.netWorth) : '$0'}
+          </p>
+        )}
+
+        {/* Net Worth Chart */}
+        {netWorthHistory && netWorthHistory.length > 1 && (
+          <div className="mt-4 h-24 -mx-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={netWorthHistory}>
+                <defs>
+                  <linearGradient id="netWorthGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="white" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="white" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatChartDate}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'white', fontSize: 10, opacity: 0.7 }}
+                />
+                <YAxis hide domain={['dataMin - 1000', 'dataMax + 1000']} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1f2937',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                  }}
+                  formatter={(value: number) => [formatCurrency(value), 'Net Worth']}
+                  labelFormatter={(label) => formatChartDate(label)}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="total"
+                  stroke="white"
+                  strokeWidth={2}
+                  fill="url(#netWorthGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Quick Stats */}
       <div className="mb-6 grid grid-cols-2 gap-3">
         <div className="card">
           <p className="text-xs text-gray-500">Assets</p>
-          <p className="text-lg font-semibold text-gray-900">$0.00</p>
+          {isLoading ? (
+            <div className="mt-1 h-6 w-20 animate-pulse rounded bg-gray-200" />
+          ) : (
+            <p className="text-lg font-semibold text-gray-900">
+              {summary ? formatCurrency(summary.totalAssets) : '$0'}
+            </p>
+          )}
         </div>
         <div className="card">
           <p className="text-xs text-gray-500">Liabilities</p>
-          <p className="text-lg font-semibold text-gray-900">$0.00</p>
+          {isLoading ? (
+            <div className="mt-1 h-6 w-20 animate-pulse rounded bg-gray-200" />
+          ) : (
+            <p className="text-lg font-semibold text-gray-900">
+              {summary ? formatCurrency(summary.totalLiabilities) : '$0'}
+            </p>
+          )}
         </div>
       </div>
+
+      {/* Partner Breakdown */}
+      {summary && Object.keys(summary.byPartner).length > 1 && (
+        <section className="mb-6">
+          <h2 className="mb-3 font-semibold text-gray-900">Net Worth by Partner</h2>
+          <div className="card space-y-3">
+            {Object.entries(summary.byPartner)
+              .filter(([, data]) => data.assets !== 0 || data.liabilities !== 0)
+              .map(([partnerId, data]) => (
+                <div key={partnerId} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PartnerBadge
+                      name={summary.memberNames[partnerId] || partnerId}
+                    />
+                    <span className="text-sm text-gray-600">
+                      {summary.memberNames[partnerId] || partnerId}
+                    </span>
+                  </div>
+                  <span className={`font-medium ${data.netWorth >= 0 ? 'text-gray-900' : 'text-error'}`}>
+                    {formatCurrency(data.netWorth)}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+
+      {/* Quick Actions */}
+      {summary && summary.accountCount === 0 && (
+        <section className="mb-6">
+          <div className="card bg-primary-50 border border-primary-200">
+            <h3 className="font-medium text-primary-900">Get Started</h3>
+            <p className="mt-1 text-sm text-primary-700">
+              Add your first account to start tracking your household finances.
+            </p>
+            <Link to="/accounts" className="btn-primary mt-3 inline-block">
+              Add Account
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Recent Transactions */}
       <section className="mb-6">
@@ -46,9 +170,60 @@ export default function Dashboard() {
           </Link>
         </div>
         <div className="card">
-          <p className="py-8 text-center text-sm text-gray-500">
-            No transactions yet. Connect an account to get started!
-          </p>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
+                  <div className="flex-1">
+                    <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+                    <div className="mt-1 h-3 w-16 animate-pulse rounded bg-gray-200" />
+                  </div>
+                  <div className="h-4 w-16 animate-pulse rounded bg-gray-200" />
+                </div>
+              ))}
+            </div>
+          ) : summary && summary.recentTransactions.length > 0 ? (
+            <div className="space-y-3">
+              {summary.recentTransactions.map((tx) => (
+                <div key={tx.id} className="flex items-center gap-3">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-sm"
+                    style={{
+                      backgroundColor: tx.category?.color
+                        ? `${tx.category.color}20`
+                        : '#f3f4f6',
+                      color: tx.category?.color || '#6b7280',
+                    }}
+                  >
+                    {tx.category?.icon ? (
+                      <span>{tx.category.icon}</span>
+                    ) : (
+                      <span>{tx.amount < 0 ? '−' : '+'}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {tx.merchantName || tx.description}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {tx.account.name} • {new Date(tx.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`font-medium ${tx.amount < 0 ? 'text-gray-900' : 'text-success'}`}
+                  >
+                    {tx.amount < 0 ? '-' : '+'}
+                    {formatCurrencyFull(Math.abs(tx.amount))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No transactions yet. Connect an account to get started!
+            </p>
+          )}
         </div>
       </section>
 
@@ -90,5 +265,25 @@ export default function Dashboard() {
         />
       </button>
     </div>
+  );
+}
+
+function PartnerBadge({ name }: { name: string }) {
+  const colors = [
+    'bg-blue-100 text-blue-700',
+    'bg-green-100 text-green-700',
+    'bg-purple-100 text-purple-700',
+    'bg-amber-100 text-amber-700',
+    'bg-pink-100 text-pink-700',
+  ];
+
+  const colorIndex = name === 'Joint' ? 4 : name.charCodeAt(0) % colors.length;
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center h-8 w-8 rounded-full text-sm font-medium ${colors[colorIndex]}`}
+    >
+      {name === 'Joint' ? 'J' : name.charAt(0).toUpperCase()}
+    </span>
   );
 }
