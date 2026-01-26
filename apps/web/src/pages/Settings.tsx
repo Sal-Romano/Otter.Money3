@@ -16,17 +16,34 @@ interface RemovalImpact {
   impact: { accountCount: number; transactionCount: number };
 }
 
+interface DissolveImpact {
+  memberCount: number;
+  accountCount: number;
+  transactionCount: number;
+}
+
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, household, accessToken, logout } = useAuthStore();
+  const { user, household, accessToken, logout, updateUser, updateHousehold } = useAuthStore();
   const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [inviteUrl, setInviteUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Remove partner modal
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [removalImpact, setRemovalImpact] = useState<RemovalImpact | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  // Leave household modal (for partners)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+
+  // Dissolve household modal (for organizers)
+  const [showDissolveConfirm, setShowDissolveConfirm] = useState(false);
+  const [dissolveImpact, setDissolveImpact] = useState<DissolveImpact | null>(null);
+  const [isDissolving, setIsDissolving] = useState(false);
 
   const isOrganizer = user?.householdRole === 'ORGANIZER';
 
@@ -131,6 +148,74 @@ export default function Settings() {
       console.error('Failed to remove partner:', err);
     } finally {
       setIsRemoving(false);
+    }
+  };
+
+  // Partner leaves household
+  const handleLeaveClick = () => {
+    setShowLeaveConfirm(true);
+  };
+
+  const handleConfirmLeave = async () => {
+    setIsLeaving(true);
+
+    try {
+      const res = await fetch('/api/household/leave', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (res.ok) {
+        // Update auth state - user no longer has a household
+        updateUser({ householdId: null, householdRole: 'PARTNER' });
+        updateHousehold(null as any);
+        // Will redirect to NoHousehold via ProtectedRoute
+      }
+    } catch (err) {
+      console.error('Failed to leave household:', err);
+    } finally {
+      setIsLeaving(false);
+      setShowLeaveConfirm(false);
+    }
+  };
+
+  // Organizer dissolves household
+  const handleDissolveClick = async () => {
+    try {
+      const res = await fetch('/api/household/dissolve/impact', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (res.ok) {
+        const { data } = await res.json();
+        setDissolveImpact(data.impact);
+        setShowDissolveConfirm(true);
+      }
+    } catch (err) {
+      console.error('Failed to get dissolve impact:', err);
+    }
+  };
+
+  const handleConfirmDissolve = async () => {
+    setIsDissolving(true);
+
+    try {
+      const res = await fetch('/api/household/dissolve', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (res.ok) {
+        // Update auth state - user no longer has a household
+        updateUser({ householdId: null, householdRole: 'PARTNER' });
+        updateHousehold(null as any);
+        // Will redirect to NoHousehold via ProtectedRoute
+      }
+    } catch (err) {
+      console.error('Failed to dissolve household:', err);
+    } finally {
+      setIsDissolving(false);
+      setShowDissolveConfirm(false);
     }
   };
 
@@ -262,10 +347,43 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* Danger Zone */}
+      <section className="card border-error-200">
+        <h2 className="mb-4 text-lg font-semibold text-error-600">Danger Zone</h2>
+        <div className="space-y-3">
+          {isOrganizer ? (
+            <div>
+              <p className="text-sm text-gray-600">
+                Dissolving your household will permanently delete all accounts, transactions, budgets, and goals.
+                {hasPartner && ' Your partner will also lose access.'}
+              </p>
+              <button
+                onClick={handleDissolveClick}
+                className="mt-3 w-full rounded-lg border border-error-300 py-2 text-sm font-medium text-error-600 hover:bg-error-50"
+              >
+                Dissolve Household
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-gray-600">
+                Leaving the household will remove your access. Your accounts will become joint accounts managed by the organizer.
+              </p>
+              <button
+                onClick={handleLeaveClick}
+                className="mt-3 w-full rounded-lg border border-error-300 py-2 text-sm font-medium text-error-600 hover:bg-error-50"
+              >
+                Leave Household
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Sign Out */}
       <button
         onClick={handleLogout}
-        className="w-full rounded-lg border border-error-300 py-3 font-medium text-error-600 hover:bg-error-50"
+        className="w-full rounded-lg border border-gray-300 py-3 font-medium text-gray-600 hover:bg-gray-50"
       >
         Sign out
       </button>
@@ -311,6 +429,89 @@ export default function Settings() {
                 className="flex-1 rounded-lg bg-error-600 py-2 font-medium text-white hover:bg-error-700 disabled:opacity-50"
               >
                 {isRemoving ? 'Removing...' : 'Remove Partner'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave Household Confirmation Modal (for partners) */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6">
+            <h3 className="text-lg font-semibold text-gray-900">Leave Household?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              You're about to leave <strong>{household?.name}</strong>.
+            </p>
+
+            <div className="mt-4 rounded-lg bg-warning-50 p-3">
+              <p className="text-sm text-warning-800">
+                <strong>What happens next:</strong> Your accounts will become joint accounts managed by the organizer.
+                You can create a new household or join another one after leaving.
+              </p>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmLeave}
+                disabled={isLeaving}
+                className="flex-1 rounded-lg bg-error-600 py-2 font-medium text-white hover:bg-error-700 disabled:opacity-50"
+              >
+                {isLeaving ? 'Leaving...' : 'Leave Household'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dissolve Household Confirmation Modal (for organizers) */}
+      {showDissolveConfirm && dissolveImpact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6">
+            <h3 className="text-lg font-semibold text-error-600">Dissolve Household?</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              This action <strong>cannot be undone</strong>. All data will be permanently deleted.
+            </p>
+
+            <div className="mt-4 rounded-lg bg-error-50 p-3">
+              <p className="text-sm text-error-800">
+                <strong>The following will be deleted:</strong>
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-error-700">
+                {dissolveImpact.memberCount > 1 && (
+                  <li>• {dissolveImpact.memberCount - 1} partner will lose access</li>
+                )}
+                {dissolveImpact.accountCount > 0 && (
+                  <li>• {dissolveImpact.accountCount} account{dissolveImpact.accountCount !== 1 ? 's' : ''}</li>
+                )}
+                {dissolveImpact.transactionCount > 0 && (
+                  <li>• {dissolveImpact.transactionCount} transaction{dissolveImpact.transactionCount !== 1 ? 's' : ''}</li>
+                )}
+              </ul>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDissolveConfirm(false);
+                  setDissolveImpact(null);
+                }}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDissolve}
+                disabled={isDissolving}
+                className="flex-1 rounded-lg bg-error-600 py-2 font-medium text-white hover:bg-error-700 disabled:opacity-50"
+              >
+                {isDissolving ? 'Dissolving...' : 'Dissolve Forever'}
               </button>
             </div>
           </div>

@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
         })),
       updateHousehold: (updates) =>
         set((state) => ({
-          household: state.household ? { ...state.household, ...updates } : null,
+          household: updates === null ? null : state.household ? { ...state.household, ...updates } : null,
         })),
       logout: () =>
         set({

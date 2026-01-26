@@ -9,13 +9,19 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
+import NoHousehold from './pages/NoHousehold';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If user has no household, show NoHousehold page
+  if (!user?.householdId) {
+    return <NoHousehold />;
   }
 
   return <>{children}</>;
