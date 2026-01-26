@@ -111,21 +111,21 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 4: Plaid Integration
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Each partner can connect their own bank accounts via Plaid
 
 ### Tasks
-- [ ] Set up Plaid client and configuration
-- [ ] Implement Plaid Link token generation (per user)
-- [ ] Implement public token exchange
-- [ ] Build Plaid Link integration in frontend
-- [ ] Associate Plaid items with the connecting user
-- [ ] Auto-assign account ownership to connecting partner
-- [ ] Implement transaction sync (initial)
-- [ ] Implement webhook handlers
-- [ ] Handle connection status and re-authentication
-- [ ] Map Plaid categories to household categories
-- [ ] Update dashboard for connected accounts
+- [x] Set up Plaid client and configuration
+- [x] Implement Plaid Link token generation (per user)
+- [x] Implement public token exchange
+- [x] Build Plaid Link integration in frontend
+- [x] Associate Plaid items with the connecting user
+- [x] Auto-assign account ownership to connecting partner
+- [x] Implement transaction sync (initial)
+- [x] Implement webhook handlers
+- [x] Handle connection status and re-authentication
+- [x] Map Plaid categories to household categories
+- [x] Update dashboard for connected accounts
 
 ### Deliverables
 - Each partner connects their own banks

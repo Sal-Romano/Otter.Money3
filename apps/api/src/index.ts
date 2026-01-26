@@ -11,6 +11,7 @@ import { transactionsRouter } from './routes/transactions';
 import { categoriesRouter } from './routes/categories';
 import { dashboardRouter } from './routes/dashboard';
 import { healthRouter } from './routes/health';
+import plaidRouter from './routes/plaid';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -33,6 +34,7 @@ app.use('/api/accounts', accountsRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/plaid', plaidRouter);
 
 // Error handler
 app.use(errorHandler);

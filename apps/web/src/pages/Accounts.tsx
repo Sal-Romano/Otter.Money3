@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
+import { usePlaidLinkConnect } from '../hooks/usePlaidLink';
 import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 
 // Group accounts by type
@@ -34,10 +35,23 @@ const typeOrder: AccountType[] = [
 ];
 
 export default function Accounts() {
-  const { data: accounts, isLoading, error } = useAccounts();
+  const { data: accounts, isLoading, error, refetch } = useAccounts();
   const { data: summary } = useAccountSummary();
   const [selectedAccount, setSelectedAccount] = useState<AccountWithOwner | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPlaidSuccess, setShowPlaidSuccess] = useState(false);
+  const [plaidSuccessMessage, setPlaidSuccessMessage] = useState('');
+
+  const { open: openPlaidLink, ready: plaidReady } = usePlaidLinkConnect(
+    (data) => {
+      setPlaidSuccessMessage(
+        `Successfully connected ${data.institutionName || 'your bank'}! Added ${data.accountsCreated} account${data.accountsCreated !== 1 ? 's' : ''}.`
+      );
+      setShowPlaidSuccess(true);
+      refetch();
+      setTimeout(() => setShowPlaidSuccess(false), 5000);
+    }
+  );
 
   const groupedAccounts = useMemo(() => {
     if (!accounts) return {};
@@ -81,18 +95,42 @@ export default function Accounts() {
 
   return (
     <div className="px-4 py-6">
-      {/* Header */}
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your household's financial accounts
-          </p>
+      {/* Success Message */}
+      {showPlaidSuccess && (
+        <div className="mb-4 rounded-lg bg-green-50 p-4 text-green-800 border border-green-200">
+          <div className="flex items-start">
+            <CheckCircleIcon className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <span className="text-sm">{plaidSuccessMessage}</span>
+          </div>
         </div>
-        <button onClick={handleAddAccount} className="btn-primary">
-          <PlusIcon className="mr-1 h-4 w-4" />
-          Add
-        </button>
+      )}
+
+      {/* Header */}
+      <header className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage your household's financial accounts
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={openPlaidLink}
+            disabled={!plaidReady}
+            className="btn-primary flex-1"
+          >
+            <BankIcon className="mr-1 h-4 w-4" />
+            Connect Bank
+          </button>
+          <button onClick={handleAddAccount} className="btn-outline flex-1">
+            <PlusIcon className="mr-1 h-4 w-4" />
+            Add Manually
+          </button>
+        </div>
       </header>
 
       {/* Summary Cards */}
@@ -127,11 +165,18 @@ export default function Accounts() {
           </div>
           <h3 className="text-lg font-medium text-gray-900">No accounts yet</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Add your first account to start tracking your household finances.
+            Connect your bank or add an account manually to start tracking your household finances.
           </p>
-          <button onClick={handleAddAccount} className="btn-primary mt-4">
-            Add Account
-          </button>
+          <div className="mt-4 flex gap-2 justify-center">
+            <button onClick={openPlaidLink} disabled={!plaidReady} className="btn-primary">
+              <BankIcon className="mr-1 h-4 w-4" />
+              Connect Bank
+            </button>
+            <button onClick={handleAddAccount} className="btn-outline">
+              <PlusIcon className="mr-1 h-4 w-4" />
+              Add Manually
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
@@ -292,6 +337,30 @@ function LinkIcon({ className }: { className: string }) {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+      />
+    </svg>
+  );
+}
+
+function BankIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"
+      />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path
+        fillRule="evenodd"
+        d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+        clipRule="evenodd"
       />
     </svg>
   );
