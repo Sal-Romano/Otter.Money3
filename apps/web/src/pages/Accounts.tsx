@@ -236,10 +236,33 @@ export default function Accounts() {
         <BankConnectionsModal
           items={plaidItems.items}
           isLoading={plaidItems.isLoading}
-          onDisconnect={async (itemId) => {
-            if (confirm('Are you sure you want to disconnect this bank? All associated accounts and transactions will be removed.')) {
-              await plaidItems.removeItem(itemId);
-              refetch();
+          onDisconnect={async (itemId, institutionName) => {
+            // Get accounts for this item to show count
+            const itemAccounts = accounts?.filter(a => a.plaidItemId === itemId) || [];
+            const accountCount = itemAccounts.length;
+
+            const message = `Are you sure you want to disconnect ${institutionName || 'this bank'}?\n\n` +
+              `This will permanently remove:\n` +
+              `• ${accountCount} account${accountCount !== 1 ? 's' : ''}\n` +
+              `• All associated transactions\n\n` +
+              `This action cannot be undone.`;
+
+            if (confirm(message)) {
+              try {
+                const result = await plaidItems.removeItem(itemId);
+                refetch();
+
+                // Show success message with counts
+                if (result) {
+                  alert(
+                    `Successfully disconnected!\n\n` +
+                    `Removed ${result.accountsDeleted} account${result.accountsDeleted !== 1 ? 's' : ''} ` +
+                    `and ${result.transactionsDeleted} transaction${result.transactionsDeleted !== 1 ? 's' : ''}.`
+                  );
+                }
+              } catch (err) {
+                alert('Failed to disconnect. Please try again.');
+              }
             }
           }}
           onClose={() => setShowBankConnections(false)}
@@ -252,7 +275,7 @@ export default function Accounts() {
 interface BankConnectionsModalProps {
   items: Array<{ itemId: string; institutionName?: string; createdAt: string }>;
   isLoading: boolean;
-  onDisconnect: (itemId: string) => Promise<void>;
+  onDisconnect: (itemId: string, institutionName?: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -310,7 +333,7 @@ function BankConnectionsModal({ items, isLoading, onDisconnect, onClose }: BankC
                   </div>
                 </div>
                 <button
-                  onClick={() => onDisconnect(item.itemId)}
+                  onClick={() => onDisconnect(item.itemId, item.institutionName)}
                   className="text-sm text-error hover:text-error-600 font-medium"
                 >
                   Disconnect

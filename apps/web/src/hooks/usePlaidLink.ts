@@ -151,8 +151,13 @@ export function usePlaidItems() {
     try {
       setIsLoading(true);
       setError(null);
-      await api.delete(`/plaid/items/${itemId}`);
+      const response = await api.delete<{
+        success: boolean;
+        accountsDeleted: number;
+        transactionsDeleted: number;
+      }>(`/plaid/items/${itemId}`);
       setItems((prev) => prev.filter((item) => item.itemId !== itemId));
+      return response;
     } catch (err) {
       setError(err as Error);
       console.error('Failed to remove Plaid item:', err);

@@ -477,27 +477,54 @@ router.delete('/items/:itemId', async (req, res, next) => {
       return res.status(404).json({ error: 'Plaid item not found' });
     }
 
-    // Remove the item from Plaid
-    try {
-      await plaidClient.itemRemove({
-        access_token: plaidItem.accessToken,
-      });
-    } catch (err) {
-      console.error('Failed to remove item from Plaid:', err);
-      // Continue with local cleanup even if Plaid fails
-    }
+    // Get accounts to delete
+    const accounts = await prisma.account.findMany({
+      where: { plaidItemId: itemId },
+      select: { id: true },
+    });
 
-    // Delete associated accounts (transactions will cascade)
+    const accountIds = accounts.map((a) => a.id);
+
+    // Count transactions that will be deleted
+    const transactionCount = await prisma.transaction.count({
+      where: { accountId: { in: accountIds } },
+    });
+
+    // Delete transactions first (before accounts due to foreign key)
+    await prisma.transaction.deleteMany({
+      where: { accountId: { in: accountIds } },
+    });
+
+    // Delete associated accounts
     await prisma.account.deleteMany({
       where: { plaidItemId: itemId },
     });
 
-    // Delete the Plaid item
+    // Delete the Plaid item from database
     await prisma.plaidItem.delete({
       where: { id: plaidItem.id },
     });
 
-    res.json({ data: { success: true } });
+    // Remove the item from Plaid (do this last, after local cleanup succeeds)
+    try {
+      await plaidClient.itemRemove({
+        access_token: plaidItem.accessToken,
+      });
+    } catch (err: any) {
+      // Ignore ITEM_NOT_FOUND errors (item already removed)
+      if (err?.response?.data?.error_code !== 'ITEM_NOT_FOUND') {
+        console.error('Failed to remove item from Plaid:', err?.response?.data || err.message);
+      }
+      // Continue - local cleanup is what matters
+    }
+
+    res.json({
+      data: {
+        success: true,
+        accountsDeleted: accounts.length,
+        transactionsDeleted: transactionCount,
+      },
+    });
   } catch (error) {
     next(error);
   }
