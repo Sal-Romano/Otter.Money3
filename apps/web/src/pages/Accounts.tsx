@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
-import { usePlaidLinkConnect, usePlaidItems } from '../hooks/usePlaidLink';
+import { usePlaidLinkConnect, usePlaidItems, usePlaidSync } from '../hooks/usePlaidLink';
 import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 
 // Group accounts by type
@@ -236,6 +236,7 @@ export default function Accounts() {
         <BankConnectionsModal
           items={plaidItems.items}
           isLoading={plaidItems.isLoading}
+          onRefresh={refetch}
           onDisconnect={async (itemId, institutionName) => {
             // Get accounts for this item to show count
             const itemAccounts = accounts?.filter(a => a.plaidItemId === itemId) || [];
@@ -275,11 +276,32 @@ export default function Accounts() {
 interface BankConnectionsModalProps {
   items: Array<{ itemId: string; institutionName?: string; createdAt: string }>;
   isLoading: boolean;
+  onRefresh: () => void;
   onDisconnect: (itemId: string, institutionName?: string) => Promise<void>;
   onClose: () => void;
 }
 
-function BankConnectionsModal({ items, isLoading, onDisconnect, onClose }: BankConnectionsModalProps) {
+function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClose }: BankConnectionsModalProps) {
+  const { syncTransactions, isLoading: isSyncing } = usePlaidSync();
+  const [syncingItemId, setSyncingItemId] = useState<string | null>(null);
+
+  const handleSync = async (itemId: string, institutionName?: string) => {
+    try {
+      setSyncingItemId(itemId);
+      const result = await syncTransactions(itemId);
+      onRefresh();
+      alert(
+        `Synced ${institutionName || 'bank'}!\n\n` +
+        `Added: ${result.added}\n` +
+        `Modified: ${result.modified}\n` +
+        `Removed: ${result.removed}`
+      );
+    } catch (err) {
+      alert('Failed to sync transactions. Please try again.');
+    } finally {
+      setSyncingItemId(null);
+    }
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
@@ -319,25 +341,47 @@ function BankConnectionsModal({ items, isLoading, onDisconnect, onClose }: BankC
             {items.map((item) => (
               <div
                 key={item.itemId}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                className="p-4 border border-gray-200 rounded-lg"
               >
-                <div className="flex items-center gap-3">
-                  <BankIcon className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {item.institutionName || 'Bank Connection'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Connected {new Date(item.createdAt).toLocaleDateString()}
-                    </p>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <BankIcon className="h-5 w-5 text-gray-400" />
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {item.institutionName || 'Bank Connection'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Connected {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => onDisconnect(item.itemId, item.institutionName)}
-                  className="text-sm text-error hover:text-error-600 font-medium"
-                >
-                  Disconnect
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSync(item.itemId, item.institutionName)}
+                    disabled={syncingItemId === item.itemId}
+                    className="btn-secondary flex-1 text-sm"
+                  >
+                    {syncingItemId === item.itemId ? (
+                      <>
+                        <SpinnerIcon className="mr-1 h-4 w-4 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshIcon className="mr-1 h-4 w-4" />
+                        Refresh
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => onDisconnect(item.itemId, item.institutionName)}
+                    disabled={syncingItemId === item.itemId}
+                    className="text-sm text-error hover:text-error-600 font-medium px-3"
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -510,6 +554,38 @@ function XIcon({ className }: { className: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+      />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
     </svg>
   );
 }

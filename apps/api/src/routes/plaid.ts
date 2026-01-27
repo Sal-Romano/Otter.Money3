@@ -623,6 +623,7 @@ async function syncPlaidTransactions(plaidItem: {
     let totalAdded = 0;
     let totalModified = 0;
     let totalRemoved = 0;
+    let totalSkipped = 0;
 
     while (hasMore) {
       const response = await plaidClient.transactionsSync({
@@ -635,7 +636,10 @@ async function syncPlaidTransactions(plaidItem: {
       // Process added transactions
       for (const tx of added) {
         const account = accounts.find((a) => a.plaidAccountId === tx.account_id);
-        if (!account) continue;
+        if (!account) {
+          totalSkipped++;
+          continue;
+        }
 
         // Try to map Plaid category to our category
         let categoryId: string | undefined;
@@ -717,7 +721,8 @@ async function syncPlaidTransactions(plaidItem: {
     });
 
     console.log(
-      `Synced ${totalAdded} added, ${totalModified} modified, ${totalRemoved} removed transactions for item ${plaidItem.itemId}`
+      `Synced ${totalAdded} added, ${totalModified} modified, ${totalRemoved} removed transactions for item ${plaidItem.itemId}` +
+      (totalSkipped > 0 ? ` (${totalSkipped} skipped - account not found)` : '')
     );
   } catch (error) {
     console.error(`Failed to sync transactions for item ${plaidItem.itemId}:`, error);

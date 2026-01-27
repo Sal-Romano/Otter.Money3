@@ -122,7 +122,8 @@ Development is organized into sprints, each delivering a working increment of th
 - [x] Associate Plaid items with the connecting user
 - [x] Auto-assign account ownership to connecting partner
 - [x] Implement transaction sync (initial)
-- [x] Implement webhook handlers
+- [x] Implement webhook handlers (INITIAL_UPDATE, SYNC_UPDATES_AVAILABLE)
+- [x] Add manual refresh button for on-demand syncing
 - [x] Handle connection status and re-authentication
 - [x] Map Plaid categories to household categories
 - [x] Update dashboard for connected accounts
@@ -130,7 +131,8 @@ Development is organized into sprints, each delivering a working increment of th
 ### Deliverables
 - Each partner connects their own banks
 - Accounts automatically owned by connecting partner
-- Transactions sync and appear in household view
+- Transactions sync automatically via webhooks
+- Manual refresh button for on-demand syncing
 - Both partners see all accounts/transactions
 
 ---

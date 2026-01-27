@@ -84,7 +84,23 @@ Transaction sync is functioning correctly. The initial 0 transactions issue was 
 ### Category Mapping:
 Transactions from this test bank don't have Plaid personal finance categories, so they remain uncategorized (categoryId: null). This is expected behavior - not all transactions from all banks include category data.
 
+### Webhook Integration: ✅ COMPLETE
+
+**Webhook Endpoint:** `https://dev.otter.money/api/plaid/webhook`
+
+The webhook integration is fully functional:
+- Webhook receives INITIAL_UPDATE events from Plaid
+- Automatically syncs transactions when data is ready
+- Successfully tested with multiple bank connections
+- Manual refresh button added for testing/on-demand syncing
+
+**Manual Refresh Feature:**
+Added a "Refresh" button in the Bank Connections modal that allows users to manually trigger transaction syncs for any connected bank. This is useful for:
+- Testing during development
+- Forcing immediate sync without waiting for webhook
+- Troubleshooting sync issues
+
 ### Next Steps:
-- Monitor webhook functionality when Plaid sends updates
+- Monitor webhook functionality in production environment
 - Test with banks that provide personal finance category data
 - Consider adding manual re-categorization UI for uncategorized transactions
