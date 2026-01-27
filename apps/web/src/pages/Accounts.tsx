@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
-import { usePlaidLinkConnect } from '../hooks/usePlaidLink';
+import { usePlaidLinkConnect, usePlaidItems } from '../hooks/usePlaidLink';
 import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 
 // Group accounts by type
@@ -41,6 +41,7 @@ export default function Accounts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPlaidSuccess, setShowPlaidSuccess] = useState(false);
   const [plaidSuccessMessage, setPlaidSuccessMessage] = useState('');
+  const [showBankConnections, setShowBankConnections] = useState(false);
 
   const { open: openPlaidLink, ready: plaidReady } = usePlaidLinkConnect(
     (data) => {
@@ -49,9 +50,18 @@ export default function Accounts() {
       );
       setShowPlaidSuccess(true);
       refetch();
+      plaidItems.fetchItems();
       setTimeout(() => setShowPlaidSuccess(false), 5000);
     }
   );
+
+  const plaidItems = usePlaidItems();
+
+  useEffect(() => {
+    if (showBankConnections) {
+      plaidItems.fetchItems();
+    }
+  }, [showBankConnections]);
 
   const groupedAccounts = useMemo(() => {
     if (!accounts) return {};
@@ -131,6 +141,16 @@ export default function Accounts() {
             Add Manually
           </button>
         </div>
+
+        {/* Manage Connections Link */}
+        {accounts && accounts.some(a => a.connectionType === 'PLAID') && (
+          <button
+            onClick={() => setShowBankConnections(true)}
+            className="mt-3 text-sm text-primary hover:text-primary-600 font-medium"
+          >
+            Manage Bank Connections
+          </button>
+        )}
       </header>
 
       {/* Summary Cards */}
@@ -210,6 +230,103 @@ export default function Accounts() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+
+      {/* Bank Connections Modal */}
+      {showBankConnections && (
+        <BankConnectionsModal
+          items={plaidItems.items}
+          isLoading={plaidItems.isLoading}
+          onDisconnect={async (itemId) => {
+            if (confirm('Are you sure you want to disconnect this bank? All associated accounts and transactions will be removed.')) {
+              await plaidItems.removeItem(itemId);
+              refetch();
+            }
+          }}
+          onClose={() => setShowBankConnections(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface BankConnectionsModalProps {
+  items: Array<{ itemId: string; institutionName?: string; createdAt: string }>;
+  isLoading: boolean;
+  onDisconnect: (itemId: string) => Promise<void>;
+  onClose: () => void;
+}
+
+function BankConnectionsModal({ items, isLoading, onDisconnect, onClose }: BankConnectionsModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white p-6 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Bank Connections
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 text-gray-400 hover:text-gray-600"
+            aria-label="Close"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        {isLoading ? (
+          <div className="py-8 text-center text-gray-500">
+            Loading connections...
+          </div>
+        ) : items.length === 0 ? (
+          <div className="py-8 text-center text-gray-500">
+            No bank connections found.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {items.map((item) => (
+              <div
+                key={item.itemId}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <BankIcon className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {item.institutionName || 'Bank Connection'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Connected {new Date(item.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onDisconnect(item.itemId)}
+                  className="text-sm text-error hover:text-error-600 font-medium"
+                >
+                  Disconnect
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <button onClick={onClose} className="btn-secondary w-full">
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -362,6 +479,14 @@ function CheckCircleIcon({ className }: { className: string }) {
         d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
         clipRule="evenodd"
       />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   );
 }

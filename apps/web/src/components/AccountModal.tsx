@@ -108,6 +108,12 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
   const handleDelete = async () => {
     if (!account) return;
 
+    // Prevent deletion of Plaid-connected accounts
+    if (account.connectionType === 'PLAID') {
+      alert('Plaid-connected accounts cannot be deleted individually. Please disconnect the bank connection from the Accounts page to remove all associated accounts.');
+      return;
+    }
+
     try {
       await deleteAccount.mutateAsync(account.id);
       onClose();
@@ -143,6 +149,13 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
           </button>
         </div>
 
+        {/* Plaid Warning */}
+        {isEditing && account?.connectionType === 'PLAID' && (
+          <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-800 border border-blue-200">
+            This account is connected via Plaid. Name and type cannot be edited. Only the owner can be changed.
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
@@ -158,6 +171,7 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
               className="input mt-1"
               placeholder="e.g., Chase Checking"
               required
+              disabled={isEditing && account?.connectionType === 'PLAID'}
             />
           </div>
 
@@ -172,11 +186,13 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                   key={t}
                   type="button"
                   onClick={() => setType(t)}
+                  disabled={isEditing && account?.connectionType === 'PLAID'}
                   className={clsx(
                     'flex flex-col items-center p-2 rounded-lg border-2 transition-colors',
                     type === t
                       ? 'border-primary bg-primary-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-200 hover:border-gray-300',
+                    isEditing && account?.connectionType === 'PLAID' && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   <AccountIcon type={t} size="sm" />

@@ -106,7 +106,7 @@ router.post('/link-token', async (req, res, next) => {
     // Create a link token
     const response = await plaidClient.linkTokenCreate(linkTokenRequest);
 
-    res.json({ linkToken: response.data.link_token });
+    res.json({ data: { linkToken: response.data.link_token } });
   } catch (error) {
     next(error);
   }
@@ -205,17 +205,34 @@ router.post('/exchange-token', async (req, res, next) => {
       })
     );
 
+    // Sync transactions immediately after creating accounts
+    console.log(`Starting initial transaction sync for item ${itemId}`);
+    try {
+      await syncPlaidTransactions({
+        id: plaidItem.id,
+        itemId: plaidItem.itemId,
+        accessToken: plaidItem.accessToken,
+        cursor: null,
+      });
+      console.log(`Initial transaction sync completed for item ${itemId}`);
+    } catch (syncError) {
+      console.error(`Failed to sync transactions for item ${itemId}:`, syncError);
+      // Don't fail the whole request if sync fails - webhooks will retry
+    }
+
     res.json({
-      success: true,
-      itemId: plaidItem.itemId,
-      institutionName: plaidItem.institutionName,
-      accountsCreated: accounts.length,
-      accounts: accounts.map((a) => ({
-        id: a.id,
-        name: a.name,
-        type: a.type,
-        balance: a.currentBalance,
-      })),
+      data: {
+        success: true,
+        itemId: plaidItem.itemId,
+        institutionName: plaidItem.institutionName,
+        accountsCreated: accounts.length,
+        accounts: accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          balance: a.currentBalance,
+        })),
+      },
     });
   } catch (error) {
     next(error);
@@ -260,7 +277,7 @@ router.post('/sync-transactions', async (req, res, next) => {
     });
 
     if (accounts.length === 0) {
-      return res.json({ success: true, added: 0, modified: 0, removed: 0 });
+      return res.json({ data: { success: true, added: 0, modified: 0, removed: 0 } });
     }
 
     const householdId = accounts[0].householdId;
@@ -370,10 +387,12 @@ router.post('/sync-transactions', async (req, res, next) => {
     });
 
     res.json({
-      success: true,
-      added: addedCount,
-      modified: modifiedCount,
-      removed: removedCount,
+      data: {
+        success: true,
+        added: addedCount,
+        modified: modifiedCount,
+        removed: removedCount,
+      },
     });
   } catch (error) {
     next(error);
@@ -398,7 +417,7 @@ router.get('/items', async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ items });
+    res.json({ data: { items } });
   } catch (error) {
     next(error);
   }
@@ -431,7 +450,7 @@ router.post('/items/:itemId/reconnect', async (req, res, next) => {
       data: { connectionStatus: 'ACTIVE' },
     });
 
-    res.json({ success: true });
+    res.json({ data: { success: true } });
   } catch (error) {
     next(error);
   }
@@ -478,7 +497,7 @@ router.delete('/items/:itemId', async (req, res, next) => {
       where: { id: plaidItem.id },
     });
 
-    res.json({ success: true });
+    res.json({ data: { success: true } });
   } catch (error) {
     next(error);
   }

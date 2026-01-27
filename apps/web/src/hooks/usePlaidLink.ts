@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { api } from '../utils/api';
 
@@ -89,9 +89,9 @@ export function usePlaidLinkConnect(
   }, [linkToken, open, fetchLinkToken]);
 
   // Auto-fetch token on mount
-  useState(() => {
+  useEffect(() => {
     fetchLinkToken();
-  });
+  }, [fetchLinkToken]);
 
   return {
     open: openLink,
