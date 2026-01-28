@@ -44,6 +44,63 @@ function getPeriodDateRange(period: string): { start: Date; end: Date } {
   return { start, end };
 }
 
+// Debug endpoint to check why transactions aren't counting
+budgetsRouter.get('/debug/:period', async (req, res, next) => {
+  try {
+    const householdId = req.user!.householdId!;
+    const period = req.params.period;
+    const { start, end } = getPeriodDateRange(period);
+
+    // Get all transactions (no filters)
+    const allTransactions = await prisma.transaction.findMany({
+      where: {
+        account: {
+          householdId,
+        },
+        date: {
+          gte: start,
+          lte: end,
+        },
+      },
+      include: {
+        category: true,
+        account: true,
+      },
+      orderBy: { date: 'desc' },
+    });
+
+    // Get budgets
+    const budgets = await prisma.budget.findMany({
+      where: { householdId, period },
+      include: { category: true },
+    });
+
+    res.json({
+      period,
+      dateRange: { start, end },
+      budgets: budgets.map(b => ({
+        category: b.category.name,
+        categoryId: b.categoryId,
+        amount: Number(b.amount),
+      })),
+      transactions: allTransactions.map(t => ({
+        date: t.date,
+        description: t.description,
+        amount: Number(t.amount),
+        category: t.category?.name || 'Uncategorized',
+        categoryId: t.categoryId,
+        categoryType: t.category?.type,
+        isPending: t.isPending,
+        isAdjustment: t.isAdjustment,
+        accountName: t.account.name,
+        excludeFromBudget: t.account.excludeFromBudget,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // List budgets for a period
 budgetsRouter.get('/', async (req, res, next) => {
   try {
