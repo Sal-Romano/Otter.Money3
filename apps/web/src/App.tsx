@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
 import Rules from './pages/Rules';
+import Budget from './pages/Budget';
 import Settings from './pages/Settings';
 import NoHousehold from './pages/NoHousehold';
 import Layout from './components/Layout';
@@ -98,7 +99,7 @@ export default function App() {
         <Route path="transactions" element={<Transactions />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="rules" element={<Rules />} />
-        <Route path="budget" element={<div className="p-4">Budget - Coming Soon</div>} />
+        <Route path="budget" element={<Budget />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useDashboardSummary, useNetWorthHistory } from '../hooks/useDashboard';
+import { useBudgetSpending, getCurrentPeriod } from '../hooks/useBudgets';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function Dashboard() {
   const { user, household } = useAuthStore();
   const { data: summary, isLoading } = useDashboardSummary();
   const { data: netWorthHistory } = useNetWorthHistory();
+  const { data: budgetData, isLoading: budgetLoading } = useBudgetSpending(getCurrentPeriod());
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -232,13 +234,83 @@ export default function Dashboard() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Budget Status</h2>
           <Link to="/budget" className="text-sm text-primary">
-            View all
+            {budgetData?.data && budgetData.data.length > 0 ? 'View all' : 'Set up'}
           </Link>
         </div>
         <div className="card">
-          <p className="py-8 text-center text-sm text-gray-500">
-            No budget set. Create one to track your spending!
-          </p>
+          {budgetLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-gray-200" />
+                  <div className="flex-1">
+                    <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
+                    <div className="mt-2 h-2 animate-pulse rounded bg-gray-200" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : budgetData?.data && budgetData.data.length > 0 ? (
+            <div className="space-y-4">
+              {budgetData.data.slice(0, 3).map((item) => (
+                <div key={item.categoryId}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{item.categoryIcon || '📦'}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {item.categoryName}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      ${item.totalSpent.toLocaleString()} / ${item.budgetAmount.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+                        item.status === 'exceeded'
+                          ? 'bg-red-500'
+                          : item.status === 'warning'
+                          ? 'bg-yellow-500'
+                          : 'bg-purple-600'
+                      }`}
+                      style={{ width: `${Math.min(item.percentUsed, 100)}%` }}
+                    />
+                  </div>
+                  {item.status === 'exceeded' && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Over budget by ${(item.totalSpent - item.budgetAmount).toLocaleString()}
+                    </p>
+                  )}
+                  {item.status === 'warning' && (
+                    <p className="text-xs text-yellow-600 mt-1">
+                      {item.percentUsed.toFixed(0)}% used
+                    </p>
+                  )}
+                </div>
+              ))}
+              {budgetData.data.length > 3 && (
+                <Link
+                  to="/budget"
+                  className="block text-center text-sm text-primary hover:text-primary-dark pt-2"
+                >
+                  View {budgetData.data.length - 3} more
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-gray-500 mb-3">
+                No budget set. Create one to track your spending!
+              </p>
+              <Link
+                to="/budget"
+                className="inline-block text-sm text-primary hover:text-primary-dark font-medium"
+              >
+                Create Budget →
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

@@ -163,19 +163,19 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 6: Budgeting
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Partners can set and track household budgets together
 
 ### Tasks
-- [ ] Implement budget API (CRUD, household-level)
-- [ ] Build budget setup page
-- [ ] Build budget tracking view
-- [ ] Calculate household spending per category
-- [ ] Show spending breakdown by partner ("You: $X, Partner: $Y")
-- [ ] Build progress bar components
-- [ ] Add budget status to dashboard
-- [ ] Implement budget alerts (approaching/exceeded)
-- [ ] Add copy budget from previous month
+- [x] Implement budget API (CRUD, household-level)
+- [x] Build budget setup page
+- [x] Build budget tracking view
+- [x] Calculate household spending per category
+- [x] Show spending breakdown by partner ("You: $X, Partner: $Y")
+- [x] Build progress bar components
+- [x] Add budget status to dashboard
+- [x] Implement budget alerts (approaching/exceeded)
+- [x] Add copy budget from previous month
 
 ### Deliverables
 - Household-level budgets (not per-partner)
