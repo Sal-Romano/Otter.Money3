@@ -138,23 +138,27 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 5: Categorization Rules Engine
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Automatic transaction categorization with household-shared rules
 
 ### Tasks
-- [ ] Design rules engine data model (household-level)
-- [ ] Implement rules API (CRUD)
-- [ ] Build rules management UI
-- [ ] Implement rule matching logic
-- [ ] Auto-apply rules on new transactions (all household transactions)
-- [ ] Build "create rule from transaction" UX
-- [ ] Implement retroactive rule application
-- [ ] Add rule suggestions based on patterns
+- [x] Design rules engine data model (household-level)
+- [x] Implement rules API (CRUD)
+- [x] Build rules management UI
+- [x] Implement rule matching logic
+- [x] Auto-apply rules on new transactions (all household transactions)
+- [x] Build "create rule from transaction" UX
+- [x] Implement retroactive rule application
+- [ ] Add rule suggestions based on patterns (future enhancement)
 
 ### Deliverables
 - Either partner can create categorization rules
 - Rules apply to all household transactions
 - New transactions auto-categorized
+- "Create rule from transaction" button in transaction modal
+- Rules management page with priority control
+- Test rule before saving
+- Apply rules retroactively to existing transactions
 
 ---
 

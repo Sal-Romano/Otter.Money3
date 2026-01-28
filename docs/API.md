@@ -725,6 +725,188 @@ Get net worth history for charting.
 
 ---
 
+## Rules Endpoints
+
+### GET /api/rules
+Get all categorization rules for the household.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "rule123",
+      "householdId": "hh123",
+      "categoryId": "cat456",
+      "category": {
+        "id": "cat456",
+        "name": "Coffee",
+        "type": "EXPENSE",
+        "icon": "☕",
+        "color": "#8B4513"
+      },
+      "conditions": {
+        "merchantContains": "starbucks",
+        "operator": "AND"
+      },
+      "priority": 10,
+      "isEnabled": true,
+      "createdAt": "2025-01-27T..."
+    }
+  ]
+}
+```
+
+### GET /api/rules/:id
+Get a single rule by ID.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "rule123",
+    "householdId": "hh123",
+    "categoryId": "cat456",
+    "category": { ... },
+    "conditions": { ... },
+    "priority": 10,
+    "isEnabled": true,
+    "createdAt": "2025-01-27T..."
+  }
+}
+```
+
+### POST /api/rules
+Create a new categorization rule.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "categoryId": "cat456",
+  "conditions": {
+    "merchantContains": "starbucks",
+    "amountMax": -3,
+    "operator": "AND"
+  },
+  "priority": 10,
+  "isEnabled": true
+}
+```
+
+**Condition Fields:**
+- `merchantContains` - Case-insensitive substring match on merchant name
+- `merchantExactly` - Case-insensitive exact match on merchant name
+- `descriptionContains` - Case-insensitive substring match on description
+- `descriptionExactly` - Case-insensitive exact match on description
+- `amountMin` - Minimum amount (inclusive)
+- `amountMax` - Maximum amount (inclusive)
+- `amountExactly` - Exact amount match
+- `accountIds` - Array of account IDs to match
+- `accountTypes` - Array of account types to match
+- `ownerIds` - Array of user IDs (account owners) to match
+- `operator` - "AND" (default) or "OR" for combining conditions
+
+**Response:** Same as GET /api/rules/:id
+
+### PATCH /api/rules/:id
+Update an existing rule.
+
+**Authentication:** Required
+
+**Request Body:** Same fields as POST (all optional)
+
+**Response:** Updated rule
+
+### DELETE /api/rules/:id
+Delete a rule.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "data": {
+    "message": "Rule deleted"
+  }
+}
+```
+
+### POST /api/rules/test
+Test rule conditions without saving.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "conditions": {
+    "merchantContains": "starbucks"
+  },
+  "limit": 5
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "matchCount": 15,
+    "sampleMatches": [
+      // First 5 matching transactions
+    ]
+  }
+}
+```
+
+### POST /api/rules/:id/apply
+Apply a rule retroactively to existing transactions.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `force=true` - Apply to ALL transactions (not just uncategorized)
+
+**Response:**
+```json
+{
+  "data": {
+    "message": "Rule applied to 42 transactions",
+    "count": 42
+  }
+}
+```
+
+### POST /api/rules/apply-to-transactions
+Apply all rules to specific transactions.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "transactionIds": ["tx1", "tx2", "tx3"]
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "message": "Categorized 2 of 3 transactions",
+    "categorizedCount": 2,
+    "totalCount": 3
+  }
+}
+```
+
+---
+
 ## Upcoming Endpoints
 
 ### Sprint 3: Transactions

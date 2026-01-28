@@ -5,6 +5,7 @@ import { authenticate, requireHousehold } from '../middleware/auth';
 import { AppError } from '../middleware/error';
 import { prisma } from '../utils/prisma';
 import { ERROR_CODES } from '@otter-money/shared';
+import { applyRulesToTransaction } from '../services/ruleEngine';
 
 export const transactionsRouter = Router();
 
@@ -220,6 +221,29 @@ transactionsRouter.post('/', async (req, res, next) => {
       }
     }
 
+    let finalCategoryId = data.categoryId;
+
+    // If no category provided, try to apply rules
+    if (!finalCategoryId) {
+      // Create a temporary transaction object for rule matching
+      const tempTransaction = {
+        id: 'temp',
+        accountId: data.accountId,
+        amount: new Decimal(data.amount),
+        merchantName: data.merchantName || null,
+        description: data.description,
+        date: data.date,
+        account: await prisma.account.findUnique({
+          where: { id: data.accountId },
+          select: { id: true, type: true, ownerId: true },
+        }),
+      };
+
+      if (tempTransaction.account) {
+        finalCategoryId = await applyRulesToTransaction(tempTransaction as any, householdId) || undefined;
+      }
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         accountId: data.accountId,
@@ -227,7 +251,7 @@ transactionsRouter.post('/', async (req, res, next) => {
         amount: new Decimal(data.amount),
         description: data.description,
         merchantName: data.merchantName,
-        categoryId: data.categoryId,
+        categoryId: finalCategoryId,
         notes: data.notes,
         isManual: true,
       },

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { useNavigate } from 'react-router-dom';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import {
@@ -43,6 +44,7 @@ export function TransactionModal({
   onClose,
   defaultAccountId,
 }: TransactionModalProps) {
+  const navigate = useNavigate();
   const isEditing = !!transaction;
 
   // Form state
@@ -330,6 +332,29 @@ export function TransactionModal({
               placeholder="Any additional details..."
             />
           </div>
+
+          {/* Create Rule button */}
+          {isEditing && !showDeleteConfirm && (
+            <button
+              type="button"
+              onClick={() => {
+                // Navigate to rules page with pre-filled data
+                const searchParams = new URLSearchParams();
+                searchParams.set('createFrom', transaction.id);
+                if (transaction.merchantName) {
+                  searchParams.set('merchant', transaction.merchantName);
+                }
+                if (transaction.categoryId) {
+                  searchParams.set('category', transaction.categoryId);
+                }
+                navigate(`/rules?${searchParams.toString()}`);
+                onClose();
+              }}
+              className="w-full text-sm text-purple-600 hover:text-purple-700 font-medium"
+            >
+              🤖 Create Rule from This Transaction
+            </button>
+          )}
 
           {/* Delete button */}
           {isEditing && transaction.isManual && !showDeleteConfirm && (

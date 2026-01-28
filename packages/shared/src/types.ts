@@ -161,13 +161,26 @@ export interface Goal {
 // ============================================
 
 export interface RuleConditions {
+  // Text matching (case-insensitive)
   merchantContains?: string;
-  merchantEquals?: string;
   descriptionContains?: string;
+  merchantExactly?: string;
+  descriptionExactly?: string;
+
+  // Amount matching
   amountMin?: number;
   amountMax?: number;
-  amountEquals?: number;
-  accountId?: string;
+  amountExactly?: number;
+
+  // Account filtering
+  accountIds?: string[];
+  accountTypes?: AccountType[];
+
+  // Owner filtering
+  ownerIds?: string[];
+
+  // Combination logic (default: AND)
+  operator?: 'AND' | 'OR';
 }
 
 export interface CategorizationRule {
@@ -178,6 +191,10 @@ export interface CategorizationRule {
   priority: number;
   isEnabled: boolean;
   createdAt: Date;
+}
+
+export interface CategorizationRuleWithCategory extends CategorizationRule {
+  category: Pick<Category, 'id' | 'name' | 'type' | 'icon' | 'color'>;
 }
 
 // ============================================

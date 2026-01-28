@@ -336,6 +336,20 @@ export default function Settings() {
       {/* Categories */}
       <CategoriesSection />
 
+      {/* Rules */}
+      <section className="card">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Categorization Rules</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Create rules to automatically categorize transactions based on merchant names, amounts, and more.
+        </p>
+        <button
+          onClick={() => navigate('/rules')}
+          className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          Manage Rules
+        </button>
+      </section>
+
       {/* About */}
       <section className="card">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">About</h2>

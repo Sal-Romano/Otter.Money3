@@ -5,6 +5,7 @@ import { plaidClient, mapPlaidAccountType } from '../utils/plaid';
 import { mapPlaidCategory, getCategoryIdByName } from '../utils/categoryMapping';
 import { CountryCode, Products } from 'plaid';
 import { authenticate, requireHousehold } from '../middleware/auth';
+import { applyRulesToTransaction } from '../services/ruleEngine';
 
 const router = express.Router();
 
@@ -313,7 +314,7 @@ router.post('/sync-transactions', async (req, res, next) => {
           }
         }
 
-        await prisma.transaction.upsert({
+        const transaction = await prisma.transaction.upsert({
           where: {
             externalId: tx.transaction_id,
           },
@@ -336,7 +337,24 @@ router.post('/sync-transactions', async (req, res, next) => {
             isManual: false,
             categoryId,
           },
+          include: {
+            account: {
+              select: { id: true, type: true, ownerId: true },
+            },
+          },
         });
+
+        // If no category was assigned from Plaid, try applying rules
+        if (!categoryId) {
+          const ruleCategoryId = await applyRulesToTransaction(transaction, householdId);
+          if (ruleCategoryId) {
+            await prisma.transaction.update({
+              where: { id: transaction.id },
+              data: { categoryId: ruleCategoryId },
+            });
+          }
+        }
+
         addedCount++;
       }
 
@@ -653,7 +671,7 @@ async function syncPlaidTransactions(plaidItem: {
           }
         }
 
-        await prisma.transaction.upsert({
+        const transaction = await prisma.transaction.upsert({
           where: { externalId: tx.transaction_id },
           update: {
             amount: -tx.amount,
@@ -674,7 +692,24 @@ async function syncPlaidTransactions(plaidItem: {
             isManual: false,
             categoryId,
           },
+          include: {
+            account: {
+              select: { id: true, type: true, ownerId: true },
+            },
+          },
         });
+
+        // If no category was assigned from Plaid, try applying rules
+        if (!categoryId) {
+          const ruleCategoryId = await applyRulesToTransaction(transaction, householdId);
+          if (ruleCategoryId) {
+            await prisma.transaction.update({
+              where: { id: transaction.id },
+              data: { categoryId: ruleCategoryId },
+            });
+          }
+        }
+
         totalAdded++;
       }
 

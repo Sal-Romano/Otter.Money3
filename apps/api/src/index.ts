@@ -9,6 +9,7 @@ import { householdRouter } from './routes/household';
 import { accountsRouter } from './routes/accounts';
 import { transactionsRouter } from './routes/transactions';
 import { categoriesRouter } from './routes/categories';
+import { rulesRouter } from './routes/rules';
 import { dashboardRouter } from './routes/dashboard';
 import { healthRouter } from './routes/health';
 import plaidRouter from './routes/plaid';
@@ -33,6 +34,7 @@ app.use('/api/household', householdRouter);
 app.use('/api/accounts', accountsRouter);
 app.use('/api/transactions', transactionsRouter);
 app.use('/api/categories', categoriesRouter);
+app.use('/api/rules', rulesRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/plaid', plaidRouter);
 
