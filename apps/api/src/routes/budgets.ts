@@ -182,6 +182,7 @@ budgetsRouter.get('/spending', async (req, res, next) => {
     });
 
     // Get all transactions in this period, grouped by category and account owner
+    // NOTE: Including both pending and posted transactions for budget calculations
     const transactions = await prisma.transaction.findMany({
       where: {
         account: {
@@ -196,7 +197,7 @@ budgetsRouter.get('/spending', async (req, res, next) => {
           not: null,
         },
         isAdjustment: false,
-        isPending: false,
+        // Removed isPending filter to include pending transactions in budget
       },
       include: {
         category: {
@@ -212,6 +213,17 @@ budgetsRouter.get('/spending', async (req, res, next) => {
         },
       },
     });
+
+    console.log(`[Budget Spending] Period: ${period}`);
+    console.log(`[Budget Spending] Date range: ${start.toISOString()} to ${end.toISOString()}`);
+    console.log(`[Budget Spending] Found ${transactions.length} transactions`);
+    console.log(`[Budget Spending] Transaction details:`, transactions.map(t => ({
+      desc: t.description,
+      amount: Number(t.amount),
+      categoryId: t.categoryId,
+      categoryType: t.category?.type,
+      date: t.date
+    })));
 
     // Calculate spending by category and partner
     const spendingByCategory = new Map<
@@ -245,14 +257,21 @@ budgetsRouter.get('/spending', async (req, res, next) => {
         totalSpent: 0,
         byPartner: partnersMap,
       });
+      console.log(`[Budget Init] Category: ${budget.category.name}, ID: ${budget.categoryId}`);
     });
 
     // Aggregate spending from transactions
     transactions.forEach((transaction) => {
-      if (!transaction.categoryId || !transaction.category) return;
+      if (!transaction.categoryId || !transaction.category) {
+        console.log(`[Budget] Skipping transaction - no category:`, transaction.description);
+        return;
+      }
 
       // Only count expenses for budgets
-      if (transaction.category.type !== 'EXPENSE') return;
+      if (transaction.category.type !== 'EXPENSE') {
+        console.log(`[Budget] Skipping transaction - not expense:`, transaction.description, transaction.category.type);
+        return;
+      }
 
       const categoryId = transaction.categoryId;
       const ownerId = transaction.account.ownerId;
@@ -261,8 +280,12 @@ budgetsRouter.get('/spending', async (req, res, next) => {
       let categoryData = spendingByCategory.get(categoryId);
 
       // If category doesn't have a budget, skip it
-      if (!categoryData) return;
+      if (!categoryData) {
+        console.log(`[Budget] Skipping transaction - no budget for category:`, transaction.description, categoryId);
+        return;
+      }
 
+      console.log(`[Budget] Adding ${amount} to ${categoryData.categoryName} from ${transaction.description}`);
       categoryData.totalSpent += amount;
 
       if (ownerId && categoryData.byPartner[ownerId] !== undefined) {
@@ -288,7 +311,15 @@ budgetsRouter.get('/spending', async (req, res, next) => {
           : 'on-track',
     }));
 
-    res.json({ data: result, period, members });
+    console.log('[Budget] Final result:', JSON.stringify(result, null, 2));
+    // Wrap in nested data object to work with api.get auto-unwrap
+    res.json({
+      data: {
+        data: result,
+        period,
+        members
+      }
+    });
   } catch (err) {
     next(err);
   }

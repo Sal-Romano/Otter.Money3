@@ -89,6 +89,10 @@ export default function Budget() {
   const spending = spendingData?.data || [];
   const members = spendingData?.members || [];
 
+  console.log('[Budget Page] Spending data received:', spending);
+  console.log('[Budget Page] Members:', members);
+  console.log('[Budget Page] Full spendingData:', spendingData);
+
   // Calculate overall totals
   const totalBudgeted = spending.reduce((sum, s) => sum + s.budgetAmount, 0);
   const totalSpent = spending.reduce((sum, s) => sum + s.totalSpent, 0);
