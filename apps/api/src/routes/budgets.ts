@@ -38,8 +38,9 @@ function getCurrentPeriod(): string {
 // Helper to parse period into date range
 function getPeriodDateRange(period: string): { start: Date; end: Date } {
   const [year, month] = period.split('-').map(Number);
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(year, month, 0, 23, 59, 59, 999);
+  // Use UTC to avoid timezone issues with date-only fields
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
   return { start, end };
 }
 
