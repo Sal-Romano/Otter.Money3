@@ -227,9 +227,24 @@ export default function Budget() {
         </div>
       ) : (
         <div className="space-y-4">
-          {spending.map((item) => {
-            const budget = budgets.find((b) => b.categoryId === item.categoryId);
-            if (!budget) return null;
+          {budgets.map((budget) => {
+            // Find spending data for this budget (may not exist if no transactions yet)
+            const spendingItem = spending.find((s) => s.categoryId === budget.categoryId);
+
+            // If no spending data, create default values
+            const item = spendingItem || {
+              categoryId: budget.categoryId,
+              categoryName: budget.category.name,
+              categoryType: budget.category.type,
+              categoryIcon: budget.category.icon,
+              categoryColor: budget.category.color,
+              budgetAmount: budget.amount,
+              totalSpent: 0,
+              byPartner: members.map(m => ({ userId: m.id, userName: m.name, spent: 0 })),
+              percentUsed: 0,
+              remaining: budget.amount,
+              status: 'on-track' as const,
+            };
 
             return (
               <div
