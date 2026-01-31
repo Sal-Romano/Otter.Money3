@@ -5,6 +5,7 @@ import { useBudgetSpending, getCurrentPeriod } from '../hooks/useBudgets';
 import { useSpendingBreakdown, useSpendingTrends, getCurrentPeriod as getAnalyticsPeriod } from '../hooks/useAnalytics';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { TrendsSummary } from '../components/SpendingTrendsChart';
+import UpcomingBillsWidget from '../components/UpcomingBillsWidget';
 
 export default function Dashboard() {
   const { user, household } = useAuthStore();
@@ -380,12 +381,7 @@ export default function Dashboard() {
 
       {/* Upcoming Bills */}
       <section className="mb-6">
-        <h2 className="mb-3 font-semibold text-gray-900">Upcoming Bills</h2>
-        <div className="card">
-          <p className="py-8 text-center text-sm text-gray-500">
-            No upcoming bills detected.
-          </p>
-        </div>
+        <UpcomingBillsWidget />
       </section>
 
       {/* Wally FAB - Placeholder */}

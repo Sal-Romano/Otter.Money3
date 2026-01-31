@@ -18,14 +18,15 @@ model Household {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  members             User[]
-  accounts            Account[]
-  categories          Category[]
-  budgets             Budget[]
-  goals               Goal[]
-  rules               CategorizationRule[]
-  simplefinConnection SimplefinConnection?
-  conversations       Conversation[]
+  members                User[]
+  accounts               Account[]
+  categories             Category[]
+  budgets                Budget[]
+  goals                  Goal[]
+  rules                  CategorizationRule[]
+  simplefinConnection    SimplefinConnection?
+  conversations          Conversation[]
+  recurringTransactions  RecurringTransaction[]
 }
 
 model User {
@@ -95,7 +96,8 @@ model Account {
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
-  transactions Transaction[]
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
 
   @@index([householdId])
   @@index([ownerId])
@@ -151,6 +153,8 @@ model Transaction {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  recurringLink TransactionRecurringLink?
+
   @@index([accountId, date])
   @@index([categoryId])
 }
@@ -172,9 +176,10 @@ model Category {
   children    Category[]   @relation("SubCategories")
   isSystem    Boolean      @default(false)
 
-  transactions Transaction[]
-  budgets      Budget[]
-  rules        CategorizationRule[]
+  transactions          Transaction[]
+  budgets               Budget[]
+  rules                 CategorizationRule[]
+  recurringTransactions RecurringTransaction[]
 
   @@unique([householdId, name])
 }
@@ -284,4 +289,79 @@ model Message {
   role           String
   content        String
   createdAt      DateTime     @default(now())
+}
+
+// ============================================
+// RECURRING TRANSACTIONS
+// ============================================
+
+model RecurringTransaction {
+  id              String              @id @default(cuid())
+  householdId     String
+  household       Household           @relation(fields: [householdId], references: [id])
+
+  // Pattern identification
+  merchantName    String              // Normalized merchant name
+  description     String?             // Fallback identifier
+
+  // Schedule
+  frequency       RecurringFrequency
+  expectedAmount  Decimal             @db.Decimal(19, 4)
+  amountVariance  Decimal             @db.Decimal(5, 2) @default(5.00) // % variance allowed
+  dayOfMonth      Int?                // For monthly: 1-31
+  dayOfWeek       Int?                // For weekly: 0-6
+  nextExpectedDate DateTime           @db.Date
+  lastOccurrence  DateTime?           @db.Date
+
+  // Account & category
+  accountId       String?
+  account         Account?            @relation(fields: [accountId], references: [id])
+  categoryId      String?
+  category        Category?           @relation(fields: [categoryId], references: [id])
+
+  // Status
+  status          RecurringStatus     @default(DETECTED)
+  isManual        Boolean             @default(false)
+  isPaused        Boolean             @default(false)
+
+  // Metadata
+  occurrenceCount Int                 @default(0)
+  confidence      Decimal             @db.Decimal(3, 2) @default(0.00)
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  transactions    TransactionRecurringLink[]
+
+  @@unique([householdId, merchantName, frequency])
+  @@index([householdId])
+  @@index([nextExpectedDate])
+  @@index([status])
+}
+
+model TransactionRecurringLink {
+  id                     String               @id @default(cuid())
+  transactionId          String               @unique
+  transaction            Transaction          @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  recurringTransactionId String
+  recurringTransaction   RecurringTransaction @relation(fields: [recurringTransactionId], references: [id], onDelete: Cascade)
+  createdAt              DateTime             @default(now())
+
+  @@index([recurringTransactionId])
+}
+
+enum RecurringFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+}
+
+enum RecurringStatus {
+  DETECTED    // Auto-detected, awaiting confirmation
+  CONFIRMED   // User confirmed
+  DISMISSED   // User dismissed
+  ENDED       // Cancelled/ended
 }

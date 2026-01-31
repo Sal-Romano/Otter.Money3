@@ -907,6 +907,240 @@ Apply all rules to specific transactions.
 
 ---
 
+## Recurring Transactions Endpoints
+
+All recurring endpoints require authentication and household membership.
+
+### GET /recurring
+List all recurring transactions for the household.
+
+**Query Parameters:**
+- `status` - Filter by status: DETECTED, CONFIRMED, DISMISSED, ENDED
+- `isPaused` - Filter by paused state: true, false
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "rec123",
+      "householdId": "hh123",
+      "merchantName": "netflix",
+      "description": null,
+      "frequency": "MONTHLY",
+      "expectedAmount": 15.99,
+      "amountVariance": 5,
+      "dayOfMonth": 15,
+      "dayOfWeek": null,
+      "nextExpectedDate": "2026-02-15",
+      "lastOccurrence": "2026-01-15",
+      "accountId": "acc123",
+      "categoryId": "cat456",
+      "status": "CONFIRMED",
+      "isManual": false,
+      "isPaused": false,
+      "occurrenceCount": 12,
+      "confidence": 0.95,
+      "notes": null,
+      "account": { "id": "acc123", "name": "Chase Checking", "type": "CHECKING", "ownerId": "abc123" },
+      "category": { "id": "cat456", "name": "Subscriptions", "type": "EXPENSE", "icon": "📺", "color": "#e74c3c" }
+    }
+  ]
+}
+```
+
+---
+
+### GET /recurring/upcoming
+Get upcoming bills for the next N days (for dashboard widget).
+
+**Query Parameters:**
+- `days` - Number of days to look ahead (default: 30)
+- `limit` - Max number of results (default: 5)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "rec123",
+      "merchantName": "netflix",
+      "expectedAmount": 15.99,
+      "nextExpectedDate": "2026-02-15",
+      "frequency": "MONTHLY",
+      "status": "CONFIRMED",
+      "categoryId": "cat456",
+      "categoryName": "Subscriptions",
+      "categoryColor": "#e74c3c",
+      "accountId": "acc123",
+      "accountName": "Chase Checking",
+      "isPaused": false,
+      "daysUntilDue": 14
+    }
+  ]
+}
+```
+
+---
+
+### GET /recurring/:id
+Get a single recurring transaction with linked transactions.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "rec123",
+    "merchantName": "netflix",
+    "frequency": "MONTHLY",
+    "expectedAmount": 15.99,
+    "linkedTransactions": [
+      {
+        "id": "tx123",
+        "date": "2026-01-15",
+        "amount": -15.99,
+        "merchantName": "Netflix",
+        "description": "Netflix Subscription"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### POST /recurring
+Create a manual recurring transaction.
+
+**Request:**
+```json
+{
+  "merchantName": "Gym Membership",
+  "description": "Monthly gym fee",
+  "frequency": "MONTHLY",
+  "expectedAmount": 50.00,
+  "amountVariance": 5,
+  "dayOfMonth": 1,
+  "nextExpectedDate": "2026-02-01",
+  "accountId": "acc123",
+  "categoryId": "cat456",
+  "notes": "Can cancel anytime"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| merchantName | string | Yes | Merchant/payee name |
+| description | string | No | Additional description |
+| frequency | enum | Yes | WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL |
+| expectedAmount | number | Yes | Expected transaction amount |
+| amountVariance | number | No | Allowed variance % (default: 5) |
+| dayOfMonth | number | No | Expected day of month (1-31) |
+| dayOfWeek | number | No | Expected day of week (0-6, Sunday=0) |
+| nextExpectedDate | string | Yes | Next expected date (ISO format) |
+| accountId | string | No | Associated account |
+| categoryId | string | No | Associated category |
+| notes | string | No | Additional notes |
+
+**Response (201):** Created recurring transaction
+
+---
+
+### PATCH /recurring/:id
+Update a recurring transaction.
+
+**Request:** Same fields as POST (all optional)
+
+**Response (200):** Updated recurring transaction
+
+---
+
+### DELETE /recurring/:id
+Delete a recurring transaction.
+
+**Response (200):**
+```json
+{
+  "data": { "message": "Recurring transaction deleted" }
+}
+```
+
+---
+
+### POST /recurring/:id/confirm
+Confirm a detected recurring pattern.
+
+**Response (200):** Updated recurring transaction with status "CONFIRMED"
+
+---
+
+### POST /recurring/:id/dismiss
+Dismiss a detected recurring pattern.
+
+**Response (200):** Updated recurring transaction with status "DISMISSED"
+
+---
+
+### POST /recurring/:id/pause
+Pause a recurring transaction (stops appearing in upcoming bills).
+
+**Response (200):** Updated recurring transaction with isPaused=true
+
+---
+
+### POST /recurring/:id/resume
+Resume a paused recurring transaction.
+
+**Response (200):** Updated recurring transaction with isPaused=false
+
+---
+
+### POST /recurring/:id/end
+Mark a recurring transaction as ended (cancelled subscription, etc.).
+
+**Response (200):** Updated recurring transaction with status "ENDED"
+
+---
+
+### POST /recurring/detect
+Run the detection algorithm to find recurring patterns in transaction history.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "detected": 5,
+    "updated": 2,
+    "message": "Detected 5 new recurring patterns, updated 2 existing"
+  }
+}
+```
+
+---
+
+### POST /recurring/from-transaction/:transactionId
+Create a recurring pattern from a specific transaction.
+
+**Request:**
+```json
+{
+  "frequency": "MONTHLY",
+  "expectedAmount": 15.99,
+  "dayOfMonth": 15
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| frequency | enum | Yes | WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, SEMIANNUAL, ANNUAL |
+| expectedAmount | number | No | Override amount from transaction |
+| dayOfMonth | number | No | Expected day of month |
+| dayOfWeek | number | No | Expected day of week |
+
+**Response (201):** Created recurring transaction
+
+---
+
 ## Upcoming Endpoints
 
 ### Sprint 3: Transactions

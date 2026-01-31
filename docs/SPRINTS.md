@@ -206,18 +206,18 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 8: Recurring Transactions
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Detect and display recurring payments/subscriptions
 
 ### Tasks
-- [ ] Implement recurring transaction detection algorithm
-- [ ] Build recurring transactions API
-- [ ] Build recurring payments list view
-- [ ] Show which partner's account for each recurring payment
-- [ ] Add upcoming bills preview to dashboard
-- [ ] Implement manual recurring transaction tagging
-- [ ] Add expected amount tracking
-- [ ] Build subscription management view
+- [x] Implement recurring transaction detection algorithm
+- [x] Build recurring transactions API
+- [x] Build recurring payments list view
+- [x] Show which partner's account for each recurring payment
+- [x] Add upcoming bills preview to dashboard
+- [x] Implement manual recurring transaction tagging
+- [x] Add expected amount tracking
+- [x] Build subscription management view
 
 ### Deliverables
 - Auto-detect recurring transactions

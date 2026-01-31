@@ -273,3 +273,115 @@ export interface SpendingByCategory {
   byPartner: Record<string, number>;
   percentOfTotal: number;
 }
+
+// ============================================
+// RECURRING TRANSACTIONS
+// ============================================
+
+export type RecurringFrequency =
+  | 'WEEKLY'
+  | 'BIWEEKLY'
+  | 'MONTHLY'
+  | 'QUARTERLY'
+  | 'SEMIANNUAL'
+  | 'ANNUAL';
+
+export type RecurringStatus =
+  | 'DETECTED'   // Auto-detected, awaiting confirmation
+  | 'CONFIRMED'  // User confirmed
+  | 'DISMISSED'  // User dismissed
+  | 'ENDED';     // Cancelled/ended
+
+export interface RecurringTransaction {
+  id: string;
+  householdId: string;
+  merchantName: string;
+  description: string | null;
+  frequency: RecurringFrequency;
+  expectedAmount: number;
+  amountVariance: number;
+  dayOfMonth: number | null;
+  dayOfWeek: number | null;
+  nextExpectedDate: Date;
+  lastOccurrence: Date | null;
+  accountId: string | null;
+  categoryId: string | null;
+  status: RecurringStatus;
+  isManual: boolean;
+  isPaused: boolean;
+  occurrenceCount: number;
+  confidence: number;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RecurringTransactionWithDetails extends RecurringTransaction {
+  account: Pick<Account, 'id' | 'name' | 'type' | 'ownerId'> | null;
+  category: Pick<Category, 'id' | 'name' | 'type' | 'icon' | 'color'> | null;
+}
+
+export interface TransactionRecurringLink {
+  id: string;
+  transactionId: string;
+  recurringTransactionId: string;
+  createdAt: Date;
+}
+
+export interface UpcomingBill {
+  id: string;
+  merchantName: string;
+  expectedAmount: number;
+  nextExpectedDate: Date;
+  frequency: RecurringFrequency;
+  status: RecurringStatus;
+  categoryId: string | null;
+  categoryName: string | null;
+  categoryColor: string | null;
+  accountId: string | null;
+  accountName: string | null;
+  isPaused: boolean;
+  daysUntilDue: number;
+}
+
+// Recurring transaction API types
+export interface CreateRecurringTransactionRequest {
+  merchantName: string;
+  description?: string;
+  frequency: RecurringFrequency;
+  expectedAmount: number;
+  amountVariance?: number;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  nextExpectedDate: string; // ISO date string
+  accountId?: string;
+  categoryId?: string;
+  notes?: string;
+}
+
+export interface UpdateRecurringTransactionRequest {
+  merchantName?: string;
+  description?: string;
+  frequency?: RecurringFrequency;
+  expectedAmount?: number;
+  amountVariance?: number;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  nextExpectedDate?: string;
+  accountId?: string | null;
+  categoryId?: string | null;
+  notes?: string | null;
+}
+
+export interface MarkRecurringRequest {
+  frequency: RecurringFrequency;
+  expectedAmount?: number;
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+}
+
+export interface DetectionResult {
+  detected: number;
+  updated: number;
+  patterns: RecurringTransactionWithDetails[];
+}
