@@ -2,13 +2,17 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useDashboardSummary, useNetWorthHistory } from '../hooks/useDashboard';
 import { useBudgetSpending, getCurrentPeriod } from '../hooks/useBudgets';
+import { useSpendingBreakdown, useSpendingTrends, getCurrentPeriod as getAnalyticsPeriod } from '../hooks/useAnalytics';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { TrendsSummary } from '../components/SpendingTrendsChart';
 
 export default function Dashboard() {
   const { user, household } = useAuthStore();
   const { data: summary, isLoading } = useDashboardSummary();
   const { data: netWorthHistory } = useNetWorthHistory();
   const { data: budgetData, isLoading: budgetLoading } = useBudgetSpending(getCurrentPeriod());
+  const { data: spendingBreakdown } = useSpendingBreakdown(getAnalyticsPeriod());
+  const { data: trendsData } = useSpendingTrends(3);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -28,7 +32,7 @@ export default function Dashboard() {
 
   // Format date for chart
   const formatChartDate = (dateStr: string) => {
-    const [year, month] = dateStr.split('-');
+    const [, month] = dateStr.split('-');
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return monthNames[parseInt(month) - 1];
   };
@@ -308,6 +312,66 @@ export default function Dashboard() {
                 className="inline-block text-sm text-primary hover:text-primary-dark font-medium"
               >
                 Create Budget →
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Spending Insights */}
+      <section className="mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Spending Insights</h2>
+          <Link to="/analytics" className="text-sm text-primary">
+            View details
+          </Link>
+        </div>
+        <div className="card">
+          {spendingBreakdown && spendingBreakdown.totalSpending > 0 ? (
+            <div>
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-500">This Month's Spending</p>
+                  {trendsData && <TrendsSummary data={trendsData.trends} />}
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(spendingBreakdown.totalSpending)}
+                </p>
+              </div>
+
+              {/* Top 3 Categories */}
+              {spendingBreakdown.breakdown.length > 0 && (
+                <div className="space-y-3 border-t border-gray-200 pt-4">
+                  <p className="text-xs font-medium text-gray-600 uppercase">Top Categories</p>
+                  {spendingBreakdown.breakdown.slice(0, 3).map((category) => (
+                    <div key={category.categoryId} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{category.categoryIcon || '📦'}</span>
+                        <span className="text-sm text-gray-700">{category.categoryName}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatCurrency(category.totalAmount)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {category.percentage.toFixed(0)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-gray-500 mb-3">
+                No spending data yet for this month.
+              </p>
+              <Link
+                to="/analytics"
+                className="inline-block text-sm text-primary hover:text-primary-dark font-medium"
+              >
+                View Analytics →
               </Link>
             </div>
           )}

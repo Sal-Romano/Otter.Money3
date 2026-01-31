@@ -5,7 +5,7 @@ const navItems = [
   { to: '/', label: 'Home', icon: HomeIcon },
   { to: '/transactions', label: 'Transactions', icon: ListIcon },
   { to: '/accounts', label: 'Accounts', icon: WalletIcon },
-  { to: '/budget', label: 'Budget', icon: ChartIcon },
+  { to: '/analytics', label: 'Analytics', icon: AnalyticsIcon },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -87,6 +87,25 @@ function WalletIcon({ className, filled }: { className?: string; filled?: boolea
         strokeLinejoin="round"
         fill={filled ? 'currentColor' : 'none'}
         d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+      />
+    </svg>
+  );
+}
+
+function AnalyticsIcon({ className, filled }: { className?: string; filled?: boolean }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? 'currentColor' : 'none'}
+        d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? 'currentColor' : 'none'}
+        d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
       />
     </svg>
   );

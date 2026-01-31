@@ -185,18 +185,18 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 7: Spending Analytics
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Rich spending insights for the household
 
 ### Tasks
-- [ ] Build spending breakdown chart (pie/donut)
-- [ ] Implement month-over-month comparison
-- [ ] Build spending trends view
-- [ ] Add partner filter/comparison toggle
-- [ ] Add category drill-down
-- [ ] Implement spending insights calculations
-- [ ] Update dashboard spending preview
-- [ ] Add date range selector
+- [x] Build spending breakdown chart (pie/donut)
+- [x] Implement month-over-month comparison
+- [x] Build spending trends view
+- [x] Add partner filter/comparison toggle
+- [x] Add category drill-down
+- [x] Implement spending insights calculations
+- [x] Update dashboard spending preview
+- [x] Add date range selector
 
 ### Deliverables
 - Household spending by category

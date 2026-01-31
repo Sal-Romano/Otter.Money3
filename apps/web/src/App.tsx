@@ -10,6 +10,7 @@ import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Transactions from './pages/Transactions';
+import Analytics from './pages/Analytics';
 import Rules from './pages/Rules';
 import Budget from './pages/Budget';
 import Settings from './pages/Settings';
@@ -98,6 +99,7 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="transactions" element={<Transactions />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="analytics" element={<Analytics />} />
         <Route path="rules" element={<Rules />} />
         <Route path="budget" element={<Budget />} />
         <Route path="settings" element={<Settings />} />

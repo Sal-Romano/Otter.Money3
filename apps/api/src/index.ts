@@ -12,6 +12,7 @@ import { categoriesRouter } from './routes/categories';
 import { rulesRouter } from './routes/rules';
 import { budgetsRouter } from './routes/budgets';
 import { dashboardRouter } from './routes/dashboard';
+import { analyticsRouter } from './routes/analytics';
 import { healthRouter } from './routes/health';
 import plaidRouter from './routes/plaid';
 
@@ -38,6 +39,7 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/rules', rulesRouter);
 app.use('/api/budgets', budgetsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/analytics', analyticsRouter);
 app.use('/api/plaid', plaidRouter);
 
 // Error handler
