@@ -227,18 +227,18 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 9: Goals
-**Status:** ⚪ Not Started
+**Status:** 🟢 Complete
 **Goal:** Partners can set and track shared savings goals
 
 ### Tasks
-- [ ] Implement goals API (CRUD, household-level)
-- [ ] Build goals list page
-- [ ] Build add/edit goal modal
-- [ ] Implement progress tracking
-- [ ] Build goal progress visualization
-- [ ] Add "add funds" action
-- [ ] Calculate projected completion date
-- [ ] Add goals preview to dashboard
+- [x] Implement goals API (CRUD, household-level)
+- [x] Build goals list page
+- [x] Build add/edit goal modal
+- [x] Implement progress tracking
+- [x] Build goal progress visualization
+- [x] Add "add funds" action
+- [x] Calculate projected completion date
+- [x] Add goals preview to dashboard
 
 ### Deliverables
 - Shared household goals

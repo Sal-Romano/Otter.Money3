@@ -1141,17 +1141,222 @@ Create a recurring pattern from a specific transaction.
 
 ---
 
+## Goals Endpoints
+
+All goals endpoints require authentication and household membership.
+
+### GET /goals
+List all goals for the household.
+
+**Query Parameters:**
+- `includeCompleted` - Include completed goals (default: false)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "goal123",
+      "householdId": "hh123",
+      "name": "Emergency Fund",
+      "targetAmount": 10000,
+      "currentAmount": 5000,
+      "targetDate": "2026-12-31T00:00:00.000Z",
+      "icon": "💰",
+      "color": "#9F6FBA",
+      "isCompleted": false,
+      "completedAt": null,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-15T00:00:00.000Z",
+      "percentComplete": 50,
+      "remaining": 5000
+    }
+  ]
+}
+```
+
+---
+
+### GET /goals/:id
+Get a single goal by ID.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "goal123",
+    "householdId": "hh123",
+    "name": "Emergency Fund",
+    "targetAmount": 10000,
+    "currentAmount": 5000,
+    "targetDate": "2026-12-31T00:00:00.000Z",
+    "icon": "💰",
+    "color": "#9F6FBA",
+    "isCompleted": false,
+    "completedAt": null,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-15T00:00:00.000Z",
+    "percentComplete": 50,
+    "remaining": 5000
+  }
+}
+```
+
+**Errors:**
+- `404` - Goal not found
+- `403` - Goal belongs to another household
+
+---
+
+### POST /goals
+Create a new goal.
+
+**Request:**
+```json
+{
+  "name": "Emergency Fund",
+  "targetAmount": 10000,
+  "currentAmount": 0,
+  "targetDate": "2026-12-31T00:00:00.000Z",
+  "icon": "💰",
+  "color": "#9F6FBA"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| name | string | Yes | Goal name (1-100 chars) |
+| targetAmount | number | Yes | Target amount (positive) |
+| currentAmount | number | No | Initial amount saved (default: 0) |
+| targetDate | string | No | Target completion date (ISO format) |
+| icon | string | No | Goal icon (emoji) |
+| color | string | No | Goal color (hex) |
+
+**Response (201):** Created goal
+
+---
+
+### PATCH /goals/:id
+Update an existing goal.
+
+**Request:** Same fields as POST (all optional except id)
+
+**Response (200):** Updated goal
+
+---
+
+### DELETE /goals/:id
+Delete a goal.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "message": "Goal deleted"
+  }
+}
+```
+
+---
+
+### POST /goals/:id/add
+Add funds to a goal.
+
+**Request:**
+```json
+{
+  "amount": 500
+}
+```
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "goal123",
+    "name": "Emergency Fund",
+    "targetAmount": 10000,
+    "currentAmount": 5500,
+    "percentComplete": 55,
+    "remaining": 4500,
+    "amountAdded": 500,
+    "justCompleted": false
+  }
+}
+```
+
+---
+
+### POST /goals/:id/withdraw
+Withdraw funds from a goal.
+
+**Request:**
+```json
+{
+  "amount": 200
+}
+```
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "goal123",
+    "name": "Emergency Fund",
+    "targetAmount": 10000,
+    "currentAmount": 4800,
+    "percentComplete": 48,
+    "remaining": 5200,
+    "amountWithdrawn": 200
+  }
+}
+```
+
+---
+
+### GET /goals/summary/dashboard
+Get goal summary for the dashboard widget.
+
+**Response (200):**
+```json
+{
+  "data": {
+    "goals": [
+      {
+        "id": "goal123",
+        "name": "Emergency Fund",
+        "targetAmount": 10000,
+        "currentAmount": 5000,
+        "percentComplete": 50,
+        "remaining": 5000,
+        "targetDate": "2026-12-31T00:00:00.000Z",
+        "icon": "💰",
+        "color": "#9F6FBA"
+      }
+    ],
+    "totalActiveGoals": 3,
+    "completedThisMonth": 1,
+    "totalSaved": 15000,
+    "totalTarget": 30000,
+    "overallProgress": 50
+  }
+}
+```
+
+---
+
 ## Upcoming Endpoints
 
-### Sprint 3: Transactions
-- `GET /transactions` - List transactions (with filters)
-- `POST /transactions` - Create manual transaction
-- `PATCH /transactions/:id` - Update transaction
-- `DELETE /transactions/:id` - Delete transaction
+### Sprint 10: SimpleFin Integration
+- `GET /simplefin/status` - Get connection status
+- `POST /simplefin/connect` - Set up SimpleFin connection
+- `POST /simplefin/sync` - Manual sync
+- `DELETE /simplefin` - Remove SimpleFin connection
 
-### Sprint 4: Plaid Integration
-- `POST /plaid/link-token` - Create link token
-- `POST /plaid/exchange` - Exchange public token
-- `POST /plaid/webhook` - Webhook handler
+### Sprint 11: Wally AI
+- `POST /wally/chat` - Send message, get response
+- `GET /wally/conversations` - List past conversations
+- `GET /wally/conversations/:id` - Get conversation
+- `DELETE /wally/conversations/:id` - Delete conversation
 
 *See [SPRINTS.md](./SPRINTS.md) for full roadmap.*

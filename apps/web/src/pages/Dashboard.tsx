@@ -6,6 +6,7 @@ import { useSpendingBreakdown, useSpendingTrends, getCurrentPeriod as getAnalyti
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { TrendsSummary } from '../components/SpendingTrendsChart';
 import UpcomingBillsWidget from '../components/UpcomingBillsWidget';
+import GoalsWidget from '../components/GoalsWidget';
 
 export default function Dashboard() {
   const { user, household } = useAuthStore();
@@ -377,6 +378,11 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </section>
+
+      {/* Savings Goals */}
+      <section className="mb-6">
+        <GoalsWidget />
       </section>
 
       {/* Upcoming Bills */}

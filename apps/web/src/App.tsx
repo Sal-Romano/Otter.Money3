@@ -14,6 +14,7 @@ import Analytics from './pages/Analytics';
 import Rules from './pages/Rules';
 import Budget from './pages/Budget';
 import Recurring from './pages/Recurring';
+import Goals from './pages/Goals';
 import Settings from './pages/Settings';
 import NoHousehold from './pages/NoHousehold';
 import Layout from './components/Layout';
@@ -104,6 +105,7 @@ export default function App() {
         <Route path="rules" element={<Rules />} />
         <Route path="budget" element={<Budget />} />
         <Route path="recurring" element={<Recurring />} />
+        <Route path="goals" element={<Goals />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 
