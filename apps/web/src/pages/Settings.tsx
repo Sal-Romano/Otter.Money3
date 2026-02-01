@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
-import { useCategories, useCreateCategory, useDeleteCategory } from '../hooks/useCategories';
-import type { CategoryType } from '@otter-money/shared';
+import { useCategoriesTreeByType, useCreateCategory, useDeleteCategory } from '../hooks/useCategories';
+import { CategoryIcon } from '../components/CategoryIcon';
+import { ChevronDown, ChevronRight, Trash2, Plus } from 'lucide-react';
+import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
 
 interface HouseholdMember {
   id: string;
@@ -540,25 +542,35 @@ export default function Settings() {
   );
 }
 
-// Categories management section
+// Categories management section with tree view
 function CategoriesSection() {
-  const { data: categories, isLoading } = useCategories();
+  const { data: expenseTree, isLoading: expenseLoading } = useCategoriesTreeByType('EXPENSE');
+  const { data: incomeTree, isLoading: incomeLoading } = useCategoriesTreeByType('INCOME');
+  const { data: transferTree, isLoading: transferLoading } = useCategoriesTreeByType('TRANSFER');
+
   const createCategory = useCreateCategory();
   const deleteCategory = useDeleteCategory();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryType, setNewCategoryType] = useState<CategoryType>('EXPENSE');
-  const [expandedType, setExpandedType] = useState<CategoryType | null>(null);
+  const [parentCategoryId, setParentCategoryId] = useState<string>('');
+  const [expandedType, setExpandedType] = useState<CategoryType | null>('EXPENSE');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  const groupedCategories = categories?.reduce(
-    (acc, cat) => {
-      if (!acc[cat.type]) acc[cat.type] = [];
-      acc[cat.type].push(cat);
-      return acc;
-    },
-    {} as Record<CategoryType, typeof categories>
-  );
+  const isLoading = expenseLoading || incomeLoading || transferLoading;
+
+  const toggleCategoryExpand = (id: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -568,8 +580,10 @@ function CategoriesSection() {
       await createCategory.mutateAsync({
         name: newCategoryName.trim(),
         type: newCategoryType,
+        parentId: parentCategoryId || undefined,
       });
       setNewCategoryName('');
+      setParentCategoryId('');
       setShowAddForm(false);
     } catch (err) {
       console.error('Failed to create category:', err);
@@ -584,6 +598,111 @@ function CategoriesSection() {
     } catch (err: any) {
       alert(err.message || 'Failed to delete category');
     }
+  };
+
+  // Get flat list of categories for parent selection
+  const getFlatCategories = (tree: CategoryTreeNode[] | undefined): CategoryTreeNode[] => {
+    if (!tree) return [];
+    const result: CategoryTreeNode[] = [];
+    const traverse = (nodes: CategoryTreeNode[], depth: number) => {
+      for (const node of nodes) {
+        if (depth < 2) { // Can only add children up to depth 2
+          result.push(node);
+          traverse(node.children, depth + 1);
+        }
+      }
+    };
+    traverse(tree, 0);
+    return result;
+  };
+
+  const getTreeForType = (type: CategoryType) => {
+    switch (type) {
+      case 'EXPENSE': return expenseTree;
+      case 'INCOME': return incomeTree;
+      case 'TRANSFER': return transferTree;
+      default: return undefined;
+    }
+  };
+
+  // Render a category node recursively
+  const renderCategoryNode = (node: CategoryTreeNode, depth: number = 0) => {
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedCategories.has(node.id);
+    const indentPx = depth * 20;
+
+    return (
+      <div key={node.id}>
+        <div
+          className={`flex items-center justify-between py-2 px-3 hover:bg-gray-50 ${
+            node.isSystem ? 'bg-gray-50/50' : ''
+          }`}
+          style={{ paddingLeft: `${12 + indentPx}px` }}
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Expand/collapse button */}
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={() => toggleCategoryExpand(node.id)}
+                className="p-0.5 rounded hover:bg-gray-200 text-gray-400"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+            ) : (
+              <span className="w-5" />
+            )}
+
+            {/* Icon */}
+            <span
+              className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
+              style={{
+                backgroundColor: node.color ? `${node.color}20` : '#f3f4f6',
+                color: node.color || '#6b7280',
+              }}
+            >
+              <CategoryIcon icon={node.icon} size={14} />
+            </span>
+
+            {/* Name */}
+            <span className={`text-sm truncate ${node.isSystem ? 'text-gray-600' : 'text-gray-900'}`}>
+              {node.name}
+            </span>
+
+            {node.isSystem && (
+              <span className="text-xs text-gray-400 flex-shrink-0">(default)</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs text-gray-400">
+              {node.transactionCount || 0}
+            </span>
+
+            {!node.isSystem && (
+              <button
+                onClick={() => handleDeleteCategory(node.id)}
+                className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
+                title="Delete category"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Children */}
+        {hasChildren && isExpanded && (
+          <div>
+            {node.children.map((child) => renderCategoryNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -604,9 +723,14 @@ function CategoriesSection() {
         <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="text-sm text-primary hover:text-primary-600"
+          className="flex items-center gap-1 text-sm text-primary hover:text-primary-600"
         >
-          {showAddForm ? 'Cancel' : '+ Add Category'}
+          {showAddForm ? 'Cancel' : (
+            <>
+              <Plus className="h-4 w-4" />
+              Add Category
+            </>
+          )}
         </button>
       </div>
 
@@ -621,34 +745,52 @@ function CategoriesSection() {
             className="input"
             autoFocus
           />
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <select
               value={newCategoryType}
-              onChange={(e) => setNewCategoryType(e.target.value as CategoryType)}
-              className="input flex-1"
+              onChange={(e) => {
+                setNewCategoryType(e.target.value as CategoryType);
+                setParentCategoryId('');
+              }}
+              className="input"
             >
               <option value="EXPENSE">Expense</option>
               <option value="INCOME">Income</option>
               <option value="TRANSFER">Transfer</option>
             </select>
-            <button
-              type="submit"
-              disabled={!newCategoryName.trim() || createCategory.isPending}
-              className="btn-primary"
+            <select
+              value={parentCategoryId}
+              onChange={(e) => setParentCategoryId(e.target.value)}
+              className="input"
             >
-              {createCategory.isPending ? 'Adding...' : 'Add'}
-            </button>
+              <option value="">No parent (top level)</option>
+              {getFlatCategories(getTreeForType(newCategoryType)).map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {'  '.repeat(cat.depth)}{cat.name}
+                </option>
+              ))}
+            </select>
           </div>
+          <button
+            type="submit"
+            disabled={!newCategoryName.trim() || createCategory.isPending}
+            className="btn-primary w-full"
+          >
+            {createCategory.isPending ? 'Adding...' : 'Add Category'}
+          </button>
         </form>
       )}
 
-      {/* Categories list by type */}
+      {/* Categories tree by type */}
       <div className="space-y-2">
         {(['EXPENSE', 'INCOME', 'TRANSFER'] as CategoryType[]).map((type) => {
-          const typeCats = groupedCategories?.[type] || [];
+          const tree = getTreeForType(type);
           const isExpanded = expandedType === type;
-          const customCats = typeCats.filter((c) => !c.isSystem);
-          const systemCats = typeCats.filter((c) => c.isSystem);
+          const count = tree?.reduce((acc, node) => {
+            const countNode = (n: CategoryTreeNode): number =>
+              1 + n.children.reduce((sum, child) => sum + countNode(child), 0);
+            return acc + countNode(node);
+          }, 0) || 0;
 
           return (
             <div key={type} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -660,56 +802,15 @@ function CategoriesSection() {
                   {type === 'EXPENSE' ? 'Expenses' : type === 'INCOME' ? 'Income' : 'Transfers'}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{typeCats.length}</span>
-                  <ChevronIcon className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  <span className="text-sm text-gray-500">{count}</span>
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
                 </div>
               </button>
 
-              {isExpanded && (
-                <div className="border-t border-gray-200 divide-y divide-gray-100">
-                  {/* Custom categories (can delete) */}
-                  {customCats.map((cat) => (
-                    <div key={cat.id} className="flex items-center justify-between px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: cat.color || '#9CA3AF' }}
-                        />
-                        <span className="text-sm text-gray-900">{cat.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">
-                          {(cat as any).transactionCount || 0} txns
-                        </span>
-                        <button
-                          onClick={() => handleDeleteCategory(cat.id)}
-                          className="text-gray-400 hover:text-error-600"
-                          title="Delete category"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* System categories (cannot delete) */}
-                  {systemCats.map((cat) => (
-                    <div key={cat.id} className="flex items-center justify-between px-3 py-2 bg-gray-50">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: cat.color || '#9CA3AF' }}
-                        />
-                        <span className="text-sm text-gray-600">{cat.name}</span>
-                        <span className="text-xs text-gray-400">(default)</span>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {(cat as any).transactionCount || 0} txns
-                      </span>
-                    </div>
-                  ))}
-
-                  {typeCats.length === 0 && (
+              {isExpanded && tree && (
+                <div className="border-t border-gray-200">
+                  {tree.map((node) => renderCategoryNode(node))}
+                  {tree.length === 0 && (
                     <p className="px-3 py-2 text-sm text-gray-500">No categories</p>
                   )}
                 </div>
@@ -719,21 +820,5 @@ function CategoriesSection() {
         })}
       </div>
     </section>
-  );
-}
-
-function ChevronIcon({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  );
-}
-
-function TrashIcon({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    </svg>
   );
 }

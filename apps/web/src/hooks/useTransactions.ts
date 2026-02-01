@@ -1,26 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
-import type { TransactionWithDetails, CategoryType } from '@otter-money/shared';
+import type { TransactionWithDetails, AccountType } from '@otter-money/shared';
 import { accountKeys } from './useAccounts';
 import { dashboardKeys } from './useDashboard';
 
 // Extended transaction type with account owner
-interface TransactionWithOwner extends TransactionWithDetails {
+export interface TransactionWithOwner extends TransactionWithDetails {
   account: {
     id: string;
     name: string;
-    type: string;
+    type: AccountType;
     ownerId: string | null;
     owner: { id: string; name: string } | null;
-  };
-}
-
-interface TransactionsResponse {
-  data: TransactionWithOwner[];
-  meta: {
-    total: number;
-    limit: number;
-    offset: number;
   };
 }
 

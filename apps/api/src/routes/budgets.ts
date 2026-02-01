@@ -44,6 +44,40 @@ function getPeriodDateRange(period: string): { start: Date; end: Date } {
   return { start, end };
 }
 
+// Helper to get all descendant category IDs for a given category
+async function getCategoryDescendants(categoryId: string): Promise<string[]> {
+  const descendants: string[] = [];
+
+  const getChildren = async (parentId: string) => {
+    const children = await prisma.category.findMany({
+      where: { parentId },
+      select: { id: true },
+    });
+
+    for (const child of children) {
+      descendants.push(child.id);
+      await getChildren(child.id);
+    }
+  };
+
+  await getChildren(categoryId);
+  return descendants;
+}
+
+// Helper to build a map of budget category -> all descendant IDs
+async function buildCategoryDescendantsMap(
+  budgetCategoryIds: string[]
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+
+  for (const categoryId of budgetCategoryIds) {
+    const descendants = await getCategoryDescendants(categoryId);
+    map.set(categoryId, descendants);
+  }
+
+  return map;
+}
+
 // Debug endpoint to check why transactions aren't counting
 budgetsRouter.get('/debug/:period', async (req, res, next) => {
   try {
@@ -120,6 +154,8 @@ budgetsRouter.get('/', async (req, res, next) => {
             type: true,
             icon: true,
             color: true,
+            depth: true,
+            parentId: true,
           },
         },
       },
@@ -150,6 +186,7 @@ budgetsRouter.get('/', async (req, res, next) => {
 });
 
 // Get spending breakdown by category and partner for a period
+// Now supports nested categories: parent category budgets include all descendant spending
 budgetsRouter.get('/spending', async (req, res, next) => {
   try {
     const householdId = req.user!.householdId!;
@@ -176,10 +213,15 @@ budgetsRouter.get('/spending', async (req, res, next) => {
             type: true,
             icon: true,
             color: true,
+            depth: true,
           },
         },
       },
     });
+
+    // Build map of budget category -> all descendant category IDs
+    const budgetCategoryIds = budgets.map((b) => b.categoryId);
+    const categoryDescendantsMap = await buildCategoryDescendantsMap(budgetCategoryIds);
 
     // Get all transactions in this period, grouped by category and account owner
     // NOTE: Including both pending and posted transactions for budget calculations
@@ -204,6 +246,8 @@ budgetsRouter.get('/spending', async (req, res, next) => {
           select: {
             id: true,
             type: true,
+            name: true,
+            parentId: true,
           },
         },
         account: {
@@ -217,15 +261,9 @@ budgetsRouter.get('/spending', async (req, res, next) => {
     console.log(`[Budget Spending] Period: ${period}`);
     console.log(`[Budget Spending] Date range: ${start.toISOString()} to ${end.toISOString()}`);
     console.log(`[Budget Spending] Found ${transactions.length} transactions`);
-    console.log(`[Budget Spending] Transaction details:`, transactions.map(t => ({
-      desc: t.description,
-      amount: Number(t.amount),
-      categoryId: t.categoryId,
-      categoryType: t.category?.type,
-      date: t.date
-    })));
 
     // Calculate spending by category and partner
+    // Now tracks child category breakdown too
     const spendingByCategory = new Map<
       string,
       {
@@ -234,9 +272,11 @@ budgetsRouter.get('/spending', async (req, res, next) => {
         categoryType: string;
         categoryIcon: string | null;
         categoryColor: string | null;
+        categoryDepth: number;
         budgetAmount: number;
         totalSpent: number;
         byPartner: Record<string, number>;
+        byChild: Record<string, { name: string; amount: number }>; // Track child spending
       }
     >();
 
@@ -253,14 +293,17 @@ budgetsRouter.get('/spending', async (req, res, next) => {
         categoryType: budget.category.type,
         categoryIcon: budget.category.icon,
         categoryColor: budget.category.color,
+        categoryDepth: budget.category.depth,
         budgetAmount: Number(budget.amount),
         totalSpent: 0,
         byPartner: partnersMap,
+        byChild: {},
       });
       console.log(`[Budget Init] Category: ${budget.category.name}, ID: ${budget.categoryId}`);
     });
 
     // Aggregate spending from transactions
+    // Now includes child category spending in parent budgets
     transactions.forEach((transaction) => {
       if (!transaction.categoryId || !transaction.category) {
         console.log(`[Budget] Skipping transaction - no category:`, transaction.description);
@@ -269,38 +312,70 @@ budgetsRouter.get('/spending', async (req, res, next) => {
 
       // Only count expenses for budgets
       if (transaction.category.type !== 'EXPENSE') {
-        console.log(`[Budget] Skipping transaction - not expense:`, transaction.description, transaction.category.type);
         return;
       }
 
-      const categoryId = transaction.categoryId;
+      const txCategoryId = transaction.categoryId;
       const ownerId = transaction.account.ownerId;
       const amount = Math.abs(Number(transaction.amount));
 
-      let categoryData = spendingByCategory.get(categoryId);
+      // Check if this transaction's category matches a budget category directly
+      // OR if it's a descendant of a budget category
+      for (const [budgetCatId, descendants] of categoryDescendantsMap) {
+        const categoryData = spendingByCategory.get(budgetCatId);
+        if (!categoryData) continue;
 
-      // If category doesn't have a budget, skip it
-      if (!categoryData) {
-        console.log(`[Budget] Skipping transaction - no budget for category:`, transaction.description, categoryId);
-        return;
-      }
+        // Check if transaction category is the budget category or a descendant
+        if (txCategoryId === budgetCatId || descendants.includes(txCategoryId)) {
+          console.log(`[Budget] Adding ${amount} to ${categoryData.categoryName} from ${transaction.description} (category: ${transaction.category.name})`);
 
-      console.log(`[Budget] Adding ${amount} to ${categoryData.categoryName} from ${transaction.description}`);
-      categoryData.totalSpent += amount;
+          categoryData.totalSpent += amount;
 
-      if (ownerId && categoryData.byPartner[ownerId] !== undefined) {
-        categoryData.byPartner[ownerId] += amount;
+          // Track partner spending
+          if (ownerId && categoryData.byPartner[ownerId] !== undefined) {
+            categoryData.byPartner[ownerId] += amount;
+          }
+
+          // Track child category breakdown (if it's from a child, not the budget category itself)
+          if (txCategoryId !== budgetCatId) {
+            if (!categoryData.byChild[txCategoryId]) {
+              categoryData.byChild[txCategoryId] = {
+                name: transaction.category.name,
+                amount: 0,
+              };
+            }
+            categoryData.byChild[txCategoryId].amount += amount;
+          }
+
+          // Only count toward the most specific matching budget (first match wins)
+          break;
+        }
       }
     });
 
     // Convert to array with partner details
     const result = Array.from(spendingByCategory.values()).map((data) => ({
-      ...data,
+      categoryId: data.categoryId,
+      categoryName: data.categoryName,
+      categoryType: data.categoryType,
+      categoryIcon: data.categoryIcon,
+      categoryColor: data.categoryColor,
+      categoryDepth: data.categoryDepth,
+      budgetAmount: data.budgetAmount,
+      totalSpent: data.totalSpent,
       byPartner: members.map((member) => ({
         userId: member.id,
         userName: member.name,
         spent: data.byPartner[member.id] || 0,
       })),
+      // Include child breakdown sorted by amount
+      byChild: Object.entries(data.byChild)
+        .map(([id, info]) => ({
+          categoryId: id,
+          categoryName: info.name,
+          amount: info.amount,
+        }))
+        .sort((a, b) => b.amount - a.amount),
       percentUsed: data.budgetAmount > 0 ? (data.totalSpent / data.budgetAmount) * 100 : 0,
       remaining: Math.max(0, data.budgetAmount - data.totalSpent),
       status:

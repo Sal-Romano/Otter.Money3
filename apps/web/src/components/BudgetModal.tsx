@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useCategories } from '../hooks/useCategories';
 import { useCreateBudget, useUpdateBudget, type Budget } from '../hooks/useBudgets';
+import { CategoryPicker } from './CategoryPicker';
+import { CategoryIcon } from './CategoryIcon';
+import { useCategoryById } from '../hooks/useCategories';
 
 interface BudgetModalProps {
   budget?: Budget | null;
@@ -9,11 +11,11 @@ interface BudgetModalProps {
 }
 
 export default function BudgetModal({ budget, period, onClose }: BudgetModalProps) {
-  const { data: categories } = useCategories();
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
+  const { data: selectedCategory } = useCategoryById(budget?.categoryId || null);
 
-  const [categoryId, setCategoryId] = useState(budget?.categoryId || '');
+  const [categoryId, setCategoryId] = useState<string | null>(budget?.categoryId || null);
   const [amount, setAmount] = useState(budget?.amount.toString() || '');
   const [rollover, setRollover] = useState(budget?.rollover || false);
   const [error, setError] = useState('');
@@ -63,9 +65,6 @@ export default function BudgetModal({ budget, period, onClose }: BudgetModalProp
     }
   };
 
-  // Filter to only expense categories
-  const expenseCategories = categories?.filter((cat) => cat.type === 'EXPENSE') || [];
-
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -86,30 +85,49 @@ export default function BudgetModal({ budget, period, onClose }: BudgetModalProp
           )}
 
           {/* Category selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              disabled={!!budget}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-              required
-            >
-              <option value="">Select a category...</option>
-              {expenseCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon} {cat.name}
-                </option>
-              ))}
-            </select>
-            {budget && (
+          {budget ? (
+            // Show read-only category for editing
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-100 rounded-lg border border-gray-200">
+                {selectedCategory && (
+                  <>
+                    <span
+                      className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center bg-gray-200 text-gray-600"
+                      style={
+                        selectedCategory.color
+                          ? { backgroundColor: `${selectedCategory.color}20`, color: selectedCategory.color }
+                          : undefined
+                      }
+                    >
+                      <CategoryIcon icon={selectedCategory.icon} size={14} />
+                    </span>
+                    <span className="text-gray-900">{selectedCategory.name}</span>
+                  </>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-1">
                 Category cannot be changed. Delete and create a new budget to change category.
               </p>
-            )}
-          </div>
+            </div>
+          ) : (
+            // Show picker for new budgets
+            <div>
+              <CategoryPicker
+                value={categoryId}
+                onChange={setCategoryId}
+                categoryType="EXPENSE"
+                label="Category"
+                allowUncategorized={false}
+                placeholder="Select a category..."
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Parent category budgets include spending from all subcategories.
+              </p>
+            </div>
+          )}
 
           {/* Amount */}
           <div>

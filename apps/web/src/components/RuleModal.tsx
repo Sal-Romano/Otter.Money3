@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import { useCreateRule, useUpdateRule, useTestRule } from '../hooks/useRules';
-import type { CategorizationRuleWithCategory, Category, RuleConditions } from '@otter-money/shared';
+import { CategoryPicker } from './CategoryPicker';
+import type { CategorizationRuleWithCategory, RuleConditions } from '@otter-money/shared';
 
 interface RuleModalProps {
   rule: CategorizationRuleWithCategory | null;
-  categories: Category[];
   prefillData?: { merchant?: string; categoryId?: string } | null;
   onClose: () => void;
 }
 
-export default function RuleModal({ rule, categories, prefillData, onClose }: RuleModalProps) {
+export default function RuleModal({ rule, prefillData, onClose }: RuleModalProps) {
   const createRule = useCreateRule();
   const updateRule = useUpdateRule();
   const testRule = useTestRule();
 
-  const [categoryId, setCategoryId] = useState(rule?.categoryId || prefillData?.categoryId || '');
+  const [categoryId, setCategoryId] = useState<string | null>(rule?.categoryId || prefillData?.categoryId || null);
   const [priority, setPriority] = useState(rule?.priority || 0);
   const [isEnabled, setIsEnabled] = useState(rule?.isEnabled ?? true);
 
@@ -126,26 +126,14 @@ export default function RuleModal({ rule, categories, prefillData, onClose }: Ru
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Category Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select a category...</option>
-                {categories
-                  .filter((c) => c.type === 'EXPENSE')
-                  .map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.icon} {category.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
+            <CategoryPicker
+              value={categoryId}
+              onChange={setCategoryId}
+              categoryType="EXPENSE"
+              label="Category"
+              allowUncategorized={false}
+              placeholder="Select a category..."
+            />
 
             {/* Priority */}
             <div>

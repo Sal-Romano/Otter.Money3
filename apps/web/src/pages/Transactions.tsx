@@ -1,36 +1,11 @@
 import { useState, useMemo } from 'react';
-import { useTransactions } from '../hooks/useTransactions';
+import { useTransactions, TransactionWithOwner } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { TransactionModal } from '../components/TransactionModal';
 
-interface Transaction {
-  id: string;
-  accountId: string;
-  date: string | Date;
-  amount: number;
-  description: string;
-  merchantName?: string | null;
-  categoryId?: string | null;
-  notes?: string | null;
-  isManual: boolean;
-  isAdjustment: boolean;
-  account: {
-    id: string;
-    name: string;
-    type: string;
-    ownerId: string | null;
-    owner: { id: string; name: string } | null;
-  };
-  category?: {
-    id: string;
-    name: string;
-    type: string;
-    icon?: string | null;
-    color?: string | null;
-  } | null;
-}
+type Transaction = TransactionWithOwner;
 
 export default function Transactions() {
   // Filters
@@ -64,15 +39,17 @@ export default function Transactions() {
     const groups: Record<string, Transaction[]> = {};
 
     for (const tx of transactions) {
+      // Date comes as string from JSON API, convert if needed
+      const dateValue = tx.date as unknown;
       const dateStr =
-        typeof tx.date === 'string'
-          ? tx.date.split('T')[0]
-          : tx.date.toISOString().split('T')[0];
+        typeof dateValue === 'string'
+          ? dateValue.split('T')[0]
+          : (dateValue as Date).toISOString().split('T')[0];
 
       if (!groups[dateStr]) {
         groups[dateStr] = [];
       }
-      groups[dateStr].push(tx as Transaction);
+      groups[dateStr].push(tx);
     }
 
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));

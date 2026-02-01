@@ -282,7 +282,7 @@ interface BankConnectionsModalProps {
 }
 
 function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClose }: BankConnectionsModalProps) {
-  const { syncTransactions, isLoading: isSyncing } = usePlaidSync();
+  const { syncTransactions } = usePlaidSync();
   const [syncingItemId, setSyncingItemId] = useState<string | null>(null);
 
   const handleSync = async (itemId: string, institutionName?: string) => {

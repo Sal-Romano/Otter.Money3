@@ -55,6 +55,7 @@ export interface Account {
   subtype: string | null;
   connectionType: ConnectionType;
   connectionStatus: ConnectionStatus;
+  plaidItemId: string | null;
   lastSyncedAt: Date | null;
   currentBalance: number;
   availableBalance: number | null;
@@ -113,7 +114,26 @@ export interface Category {
   icon: string | null;
   color: string | null;
   parentId: string | null;
+  depth: number;        // 0=root, 1=child, 2=grandchild (max 3 levels)
+  displayOrder: number; // Sort order within siblings
   isSystem: boolean;
+}
+
+// Category with nested children for tree structure
+export interface CategoryTreeNode extends Category {
+  children: CategoryTreeNode[];
+  transactionCount?: number;
+}
+
+// Category with full path for display
+export interface CategoryWithPath extends Category {
+  path: string[];       // e.g., ["Travel", "Flights"]
+  fullName: string;     // e.g., "Travel > Flights"
+}
+
+// Category with transaction count (from API)
+export interface CategoryWithCount extends Category {
+  transactionCount: number;
 }
 
 // ============================================

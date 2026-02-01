@@ -164,17 +164,19 @@ model Transaction {
 // ============================================
 
 model Category {
-  id          String       @id @default(cuid())
-  householdId String?
-  household   Household?   @relation(fields: [householdId], references: [id])
-  name        String
-  type        CategoryType
-  icon        String?
-  color       String?
-  parentId    String?
-  parent      Category?    @relation("SubCategories", fields: [parentId], references: [id])
-  children    Category[]   @relation("SubCategories")
-  isSystem    Boolean      @default(false)
+  id           String       @id @default(cuid())
+  householdId  String?
+  household    Household?   @relation(fields: [householdId], references: [id])
+  name         String
+  type         CategoryType
+  icon         String?
+  color        String?
+  parentId     String?
+  parent       Category?    @relation("SubCategories", fields: [parentId], references: [id])
+  children     Category[]   @relation("SubCategories")
+  isSystem     Boolean      @default(false)
+  depth        Int          @default(0)  // 0=root, 1=child, 2=grandchild (max 3 levels)
+  displayOrder Int          @default(0)  // Sort order within siblings
 
   transactions          Transaction[]
   budgets               Budget[]
@@ -182,6 +184,8 @@ model Category {
   recurringTransactions RecurringTransaction[]
 
   @@unique([householdId, name])
+  @@index([parentId])
+  @@index([type, depth])
 }
 
 enum CategoryType {

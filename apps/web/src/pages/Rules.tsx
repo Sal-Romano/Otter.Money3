@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useRules, useDeleteRule, useUpdateRule, useApplyRule } from '../hooks/useRules';
-import { useCategories } from '../hooks/useCategories';
 import RuleModal from '../components/RuleModal';
+import { CategoryIcon } from '../components/CategoryIcon';
 import type { CategorizationRuleWithCategory } from '@otter-money/shared';
 
 export default function Rules() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: rules, isLoading } = useRules();
-  const { data: categories } = useCategories();
   const deleteRule = useDeleteRule();
   const updateRule = useUpdateRule();
   const applyRule = useApplyRule();
@@ -166,13 +165,13 @@ export default function Rules() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <span
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
                       style={{
                         backgroundColor: rule.category.color ? `${rule.category.color}20` : '#f3f4f6',
                         color: rule.category.color || '#6b7280',
                       }}
                     >
-                      {rule.category.icon && <span className="mr-1">{rule.category.icon}</span>}
+                      <CategoryIcon icon={rule.category.icon} size={14} />
                       {rule.category.name}
                     </span>
                     <span className="text-xs text-gray-500">Priority: {rule.priority}</span>
@@ -234,7 +233,6 @@ export default function Rules() {
       {showModal && (
         <RuleModal
           rule={editingRule}
-          categories={categories || []}
           prefillData={prefillData}
           onClose={() => {
             setShowModal(false);

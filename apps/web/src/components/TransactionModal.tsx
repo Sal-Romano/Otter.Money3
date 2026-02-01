@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useAccounts } from '../hooks/useAccounts';
-import { useCategories } from '../hooks/useCategories';
 import {
   useCreateTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
 } from '../hooks/useTransactions';
+import { CategoryPicker } from './CategoryPicker';
 import type { CategoryType } from '@otter-money/shared';
 
 interface Transaction {
@@ -60,7 +60,6 @@ export function TransactionModal({
 
   // Data hooks
   const { data: accounts } = useAccounts();
-  const { data: categories } = useCategories();
   const createTransaction = useCreateTransaction();
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
@@ -69,11 +68,6 @@ export function TransactionModal({
     createTransaction.isPending ||
     updateTransaction.isPending ||
     deleteTransaction.isPending;
-
-  // Filter categories by type
-  const filteredCategories = categories?.filter(
-    (c) => c.type === (isExpense ? 'EXPENSE' : 'INCOME')
-  );
 
   // Reset form when modal opens
   useEffect(() => {
@@ -299,24 +293,13 @@ export function TransactionModal({
           </div>
 
           {/* Category */}
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-              Category
-            </label>
-            <select
-              id="category"
-              value={categoryId || ''}
-              onChange={(e) => setCategoryId(e.target.value || null)}
-              className="input mt-1"
-            >
-              <option value="">Uncategorized</option>
-              {filteredCategories?.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CategoryPicker
+            value={categoryId}
+            onChange={setCategoryId}
+            categoryType={isExpense ? 'EXPENSE' : 'INCOME'}
+            label="Category"
+            allowUncategorized={true}
+          />
 
           {/* Notes */}
           <div>
