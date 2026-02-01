@@ -31,37 +31,12 @@ export const ACCOUNT_TYPE_CONFIG = {
   OTHER: { label: 'Other', icon: 'circle' },
 } as const;
 
-// Default categories (legacy flat structure)
+// Default categories (legacy flat structure - kept for backwards compatibility)
+// New installations use DEFAULT_CATEGORIES_HIERARCHICAL instead
 export const DEFAULT_CATEGORIES = {
-  INCOME: [
-    { name: 'Salary', icon: '💼' },
-    { name: 'Freelance', icon: '💻' },
-    { name: 'Interest', icon: '📈' },
-    { name: 'Dividends', icon: '📊' },
-    { name: 'Other Income', icon: '💰' },
-  ],
-  EXPENSE: [
-    { name: 'Housing', icon: '🏠' },
-    { name: 'Transportation', icon: '🚗' },
-    { name: 'Groceries', icon: '🛒' },
-    { name: 'Dining Out', icon: '🍴' },
-    { name: 'Shopping', icon: '🛍️' },
-    { name: 'Entertainment', icon: '🎬' },
-    { name: 'Healthcare', icon: '❤️' },
-    { name: 'Utilities', icon: '⚡' },
-    { name: 'Subscriptions', icon: '🔄' },
-    { name: 'Travel', icon: '✈️' },
-    { name: 'Education', icon: '📚' },
-    { name: 'Personal Care', icon: '💇' },
-    { name: 'Gifts', icon: '🎁' },
-    { name: 'Insurance', icon: '🛡️' },
-    { name: 'Taxes', icon: '📄' },
-    { name: 'Other Expense', icon: '➖' },
-  ],
-  TRANSFER: [
-    { name: 'Transfer', icon: '↔️' },
-    { name: 'Credit Card Payment', icon: '💳' },
-  ],
+  INCOME: [] as { name: string; icon: string }[],
+  EXPENSE: [] as { name: string; icon: string }[],
+  TRANSFER: [] as { name: string; icon: string }[],
 } as const;
 
 // Hierarchical default categories with Lucide icon names

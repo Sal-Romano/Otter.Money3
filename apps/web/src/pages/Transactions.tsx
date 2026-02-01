@@ -4,6 +4,7 @@ import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { TransactionModal } from '../components/TransactionModal';
+import { CategoryIcon } from '../components/CategoryIcon';
 
 type Transaction = TransactionWithOwner;
 
@@ -247,7 +248,11 @@ export default function Transactions() {
                           color: tx.category?.color || '#6b7280',
                         }}
                       >
-                        {tx.category?.icon || (tx.amount < 0 ? '−' : '+')}
+                        {tx.category?.icon ? (
+                          <CategoryIcon icon={tx.category.icon} size={20} />
+                        ) : (
+                          tx.amount < 0 ? '−' : '+'
+                        )}
                       </div>
 
                       {/* Details */}

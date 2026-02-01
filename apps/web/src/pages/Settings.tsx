@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
-import { useCategoriesTreeByType, useCreateCategory, useDeleteCategory } from '../hooks/useCategories';
-import { CategoryIcon } from '../components/CategoryIcon';
-import { ChevronDown, ChevronRight, Trash2, Plus } from 'lucide-react';
+import { useCategoriesTreeByType, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories';
+import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '../components/CategoryIcon';
+import { ChevronDown, ChevronRight, Trash2, Plus, Pencil, X, Check } from 'lucide-react';
 import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
 
 interface HouseholdMember {
@@ -549,6 +549,7 @@ function CategoriesSection() {
   const { data: transferTree, isLoading: transferLoading } = useCategoriesTreeByType('TRANSFER');
 
   const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -557,6 +558,28 @@ function CategoriesSection() {
   const [parentCategoryId, setParentCategoryId] = useState<string>('');
   const [expandedType, setExpandedType] = useState<CategoryType | null>('EXPENSE');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  // Edit state
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editIcon, setEditIcon] = useState('');
+  const [editColor, setEditColor] = useState('');
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const [iconSearch, setIconSearch] = useState('');
+
+  // Preset colors for the color picker
+  const colorOptions = [
+    '#9F6FBA', // Purple (brand)
+    '#3B82F6', // Blue
+    '#10B981', // Green
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Violet
+    '#EC4899', // Pink
+    '#6B7280', // Gray
+    '#06B6D4', // Cyan
+    '#F97316', // Orange
+  ];
 
   const isLoading = expenseLoading || incomeLoading || transferLoading;
 
@@ -600,6 +623,39 @@ function CategoriesSection() {
     }
   };
 
+  const handleStartEdit = (node: CategoryTreeNode) => {
+    setEditingCategoryId(node.id);
+    setEditName(node.name);
+    setEditIcon(node.icon || '');
+    setEditColor(node.color || '');
+    setIconSearch('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCategoryId(null);
+    setEditName('');
+    setEditIcon('');
+    setEditColor('');
+    setShowIconPicker(false);
+    setIconSearch('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCategoryId || !editName.trim()) return;
+
+    try {
+      await updateCategory.mutateAsync({
+        id: editingCategoryId,
+        name: editName.trim(),
+        icon: editIcon || null,
+        color: editColor || null,
+      });
+      handleCancelEdit();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update category');
+    }
+  };
+
   // Get flat list of categories for parent selection
   const getFlatCategories = (tree: CategoryTreeNode[] | undefined): CategoryTreeNode[] => {
     if (!tree) return [];
@@ -629,6 +685,7 @@ function CategoriesSection() {
   const renderCategoryNode = (node: CategoryTreeNode, depth: number = 0) => {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedCategories.has(node.id);
+    const isEditing = editingCategoryId === node.id;
     const indentPx = depth * 20;
 
     return (
@@ -636,63 +693,182 @@ function CategoriesSection() {
         <div
           className={`flex items-center justify-between py-2 px-3 hover:bg-gray-50 ${
             node.isSystem ? 'bg-gray-50/50' : ''
-          }`}
+          } ${isEditing ? 'bg-purple-50' : ''}`}
           style={{ paddingLeft: `${12 + indentPx}px` }}
         >
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* Expand/collapse button */}
-            {hasChildren ? (
-              <button
-                type="button"
-                onClick={() => toggleCategoryExpand(node.id)}
-                className="p-0.5 rounded hover:bg-gray-200 text-gray-400"
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
+          {isEditing ? (
+            // Edit mode
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                {/* Icon picker button */}
+                <button
+                  type="button"
+                  onClick={() => setShowIconPicker(!showIconPicker)}
+                  className="flex-shrink-0 w-8 h-8 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+                  style={{ color: editColor || '#6b7280' }}
+                  title="Pick icon"
+                >
+                  {editIcon ? (
+                    <CategoryIcon icon={editIcon} size={18} />
+                  ) : (
+                    <span className="text-gray-400 text-xs">+</span>
+                  )}
+                </button>
+
+                {/* Name input */}
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="flex-1 text-sm border rounded px-2 py-1 min-w-0"
+                  autoFocus
+                />
+
+                {/* Save/Cancel buttons */}
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={updateCategory.isPending}
+                  className="p-1 text-green-600 hover:bg-green-50 rounded"
+                  title="Save"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                  title="Cancel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Color picker */}
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-500 mr-1">Color:</span>
+                {colorOptions.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEditColor(color)}
+                    className={`w-6 h-6 rounded-full border-2 ${
+                      editColor === color ? 'border-gray-800 scale-110' : 'border-transparent'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+                {editColor && (
+                  <button
+                    type="button"
+                    onClick={() => setEditColor('')}
+                    className="text-xs text-gray-400 hover:text-gray-600 ml-1"
+                  >
+                    Clear
+                  </button>
                 )}
-              </button>
-            ) : (
-              <span className="w-5" />
-            )}
+              </div>
 
-            {/* Icon */}
-            <span
-              className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
-              style={{
-                backgroundColor: node.color ? `${node.color}20` : '#f3f4f6',
-                color: node.color || '#6b7280',
-              }}
-            >
-              <CategoryIcon icon={node.icon} size={14} />
-            </span>
+              {/* Icon picker grid */}
+              {showIconPicker && (
+                <div className="p-2 border rounded-lg bg-white shadow-lg">
+                  {/* Icon search */}
+                  <input
+                    type="text"
+                    value={iconSearch}
+                    onChange={(e) => setIconSearch(e.target.value)}
+                    placeholder="Search icons..."
+                    className="w-full text-sm border rounded px-2 py-1 mb-2"
+                  />
+                  <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
+                    {CATEGORY_ICON_OPTIONS
+                      .filter((name) => name.includes(iconSearch.toLowerCase()))
+                      .map((iconName) => (
+                        <button
+                          key={iconName}
+                          type="button"
+                          onClick={() => {
+                            setEditIcon(iconName);
+                            setShowIconPicker(false);
+                            setIconSearch('');
+                          }}
+                          className={`p-2 rounded hover:bg-purple-100 ${
+                            editIcon === iconName ? 'bg-purple-100 ring-2 ring-primary' : ''
+                          }`}
+                          style={{ color: editColor || '#6b7280' }}
+                          title={iconName}
+                        >
+                          <CategoryIcon icon={iconName} size={16} />
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            // View mode
+            <>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {/* Expand/collapse button */}
+                {hasChildren ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleCategoryExpand(node.id)}
+                    className="p-0.5 rounded hover:bg-gray-200 text-gray-400"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="w-5" />
+                )}
 
-            {/* Name */}
-            <span className={`text-sm truncate ${node.isSystem ? 'text-gray-600' : 'text-gray-900'}`}>
-              {node.name}
-            </span>
+                {/* Icon */}
+                <span
+                  className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
+                  style={{
+                    backgroundColor: node.color ? `${node.color}20` : '#f3f4f6',
+                    color: node.color || '#6b7280',
+                  }}
+                >
+                  <CategoryIcon icon={node.icon} size={14} />
+                </span>
 
-            {node.isSystem && (
-              <span className="text-xs text-gray-400 flex-shrink-0">(default)</span>
-            )}
-          </div>
+                {/* Name */}
+                <span className={`text-sm truncate ${node.isSystem ? 'text-gray-600' : 'text-gray-900'}`}>
+                  {node.name}
+                </span>
+              </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-gray-400">
-              {node.transactionCount || 0}
-            </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs text-gray-400">
+                  {node.transactionCount || 0}
+                </span>
 
-            {!node.isSystem && (
-              <button
-                onClick={() => handleDeleteCategory(node.id)}
-                className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
-                title="Delete category"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
+                {/* Edit button - works for all categories */}
+                <button
+                  onClick={() => handleStartEdit(node)}
+                  className="p-1 text-gray-400 hover:text-primary rounded hover:bg-purple-50"
+                  title="Edit category"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+
+                {/* Delete button - only for non-system categories */}
+                {!node.isSystem && (
+                  <button
+                    onClick={() => handleDeleteCategory(node.id)}
+                    className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
+                    title="Delete category"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Children */}

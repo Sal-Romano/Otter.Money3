@@ -7,6 +7,7 @@ import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'rec
 import { TrendsSummary } from '../components/SpendingTrendsChart';
 import UpcomingBillsWidget from '../components/UpcomingBillsWidget';
 import GoalsWidget from '../components/GoalsWidget';
+import { CategoryIcon } from '../components/CategoryIcon';
 
 export default function Dashboard() {
   const { user, household } = useAuthStore();
@@ -205,9 +206,9 @@ export default function Dashboard() {
                     }}
                   >
                     {tx.category?.icon ? (
-                      <span>{tx.category.icon}</span>
+                      <CategoryIcon icon={tx.category.icon} size={20} />
                     ) : (
-                      <span>{tx.amount < 0 ? '−' : '+'}</span>
+                      tx.amount < 0 ? '−' : '+'
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
