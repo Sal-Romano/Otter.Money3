@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
-import { useCategoriesTreeByType, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../hooks/useCategories';
+import { useCategoriesTreeByType, useCreateCategory, useUpdateCategory, useDeleteCategory, useCategoryDeletionImpact, useRestoreDefaultCategories, useCategoriesFlat } from '../hooks/useCategories';
 import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '../components/CategoryIcon';
 import { ChevronDown, ChevronRight, Trash2, Plus, Pencil, X, Check } from 'lucide-react';
 import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
@@ -551,8 +551,23 @@ function CategoriesSection() {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
+  const { checkImpact } = useCategoryDeletionImpact();
+  const restoreDefaults = useRestoreDefaultCategories();
+  const { data: allCategories } = useCategoriesFlat();
 
   const [showAddForm, setShowAddForm] = useState(false);
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    categoryId: string;
+    categoryName: string;
+    directTransactions: number;
+    nestedTransactions: number;
+    childrenWithTransactions: string[];
+    canDelete: boolean;
+  } | null>(null);
+  const [deleteAction, setDeleteAction] = useState<'unassign' | 'reassign'>('unassign');
+  const [reassignTargetId, setReassignTargetId] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryType, setNewCategoryType] = useState<CategoryType>('EXPENSE');
   const [parentCategoryId, setParentCategoryId] = useState<string>('');
@@ -613,11 +628,63 @@ function CategoriesSection() {
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Delete this category?')) return;
+  const handleDeleteCategory = async (node: CategoryTreeNode) => {
+    try {
+      const impact = await checkImpact(node.id);
+
+      if (!impact.canDelete) {
+        // Has nested transactions - show error
+        setDeleteModal({
+          categoryId: node.id,
+          categoryName: node.name,
+          directTransactions: impact.directTransactions,
+          nestedTransactions: impact.nestedTransactions,
+          childrenWithTransactions: impact.childrenWithTransactions,
+          canDelete: false,
+        });
+        return;
+      }
+
+      if (impact.directTransactions > 0) {
+        // Has transactions - show options modal
+        setDeleteModal({
+          categoryId: node.id,
+          categoryName: node.name,
+          directTransactions: impact.directTransactions,
+          nestedTransactions: 0,
+          childrenWithTransactions: [],
+          canDelete: true,
+        });
+        setDeleteAction('unassign');
+        setReassignTargetId('');
+        return;
+      }
+
+      // No transactions - confirm and delete
+      if (confirm(`Delete "${node.name}"? This cannot be undone.`)) {
+        await deleteCategory.mutateAsync({ id: node.id });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete category');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal) return;
 
     try {
-      await deleteCategory.mutateAsync(id);
+      if (deleteAction === 'reassign' && !reassignTargetId) {
+        alert('Please select a category to reassign transactions to.');
+        return;
+      }
+
+      await deleteCategory.mutateAsync({
+        id: deleteModal.categoryId,
+        action: deleteAction,
+        targetCategoryId: deleteAction === 'reassign' ? reassignTargetId : undefined,
+      });
+
+      setDeleteModal(null);
     } catch (err: any) {
       alert(err.message || 'Failed to delete category');
     }
@@ -856,16 +923,14 @@ function CategoriesSection() {
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
 
-                {/* Delete button - only for non-system categories */}
-                {!node.isSystem && (
-                  <button
-                    onClick={() => handleDeleteCategory(node.id)}
-                    className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
-                    title="Delete category"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+                {/* Delete button - works for all categories */}
+                <button
+                  onClick={() => handleDeleteCategory(node)}
+                  className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50"
+                  title="Delete category"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             </>
           )}
@@ -897,17 +962,33 @@ function CategoriesSection() {
     <section className="card">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1 text-sm text-primary hover:text-primary-600"
-        >
-          {showAddForm ? 'Cancel' : (
-            <>
-              <Plus className="h-4 w-4" />
-              Add Category
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              try {
+                const result = await restoreDefaults.mutateAsync();
+                alert(result.message);
+              } catch (err: any) {
+                alert(err.message || 'Failed to restore defaults');
+              }
+            }}
+            disabled={restoreDefaults.isPending}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            {restoreDefaults.isPending ? 'Restoring...' : 'Restore Defaults'}
+          </button>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex items-center gap-1 text-sm text-primary hover:text-primary-600"
+          >
+            {showAddForm ? 'Cancel' : (
+              <>
+                <Plus className="h-4 w-4" />
+                Add Category
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Add category form */}
@@ -995,6 +1076,113 @@ function CategoriesSection() {
           );
         })}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Delete "{deleteModal.categoryName}"?
+            </h3>
+
+            {!deleteModal.canDelete ? (
+              // Can't delete - has nested transactions
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  This category has subcategories with {deleteModal.nestedTransactions} transactions
+                  ({deleteModal.childrenWithTransactions.join(', ')}).
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Please delete or reassign those subcategories first before deleting this parent category.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setDeleteModal(null)}
+                    className="btn-secondary"
+                  >
+                    OK
+                  </button>
+                </div>
+              </>
+            ) : (
+              // Can delete - show options for transactions
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  This category has {deleteModal.directTransactions} transactions.
+                  What would you like to do with them?
+                </p>
+
+                <div className="space-y-3 mb-4">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="deleteAction"
+                      checked={deleteAction === 'unassign'}
+                      onChange={() => setDeleteAction('unassign')}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="font-medium text-sm">Remove category</div>
+                      <div className="text-xs text-gray-500">
+                        Transactions will become uncategorized
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="deleteAction"
+                      checked={deleteAction === 'reassign'}
+                      onChange={() => setDeleteAction('reassign')}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="font-medium text-sm">Reassign to another category</div>
+                      <div className="text-xs text-gray-500">
+                        Move all transactions to a different category
+                      </div>
+                    </div>
+                  </label>
+
+                  {deleteAction === 'reassign' && (
+                    <select
+                      value={reassignTargetId}
+                      onChange={(e) => setReassignTargetId(e.target.value)}
+                      className="input ml-6 w-auto"
+                    >
+                      <option value="">Select a category...</option>
+                      {allCategories
+                        ?.filter((c) => c.id !== deleteModal.categoryId)
+                        .map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.fullName || cat.name}
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setDeleteModal(null)}
+                    className="btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmDelete}
+                    disabled={deleteCategory.isPending}
+                    className="btn-primary bg-red-600 hover:bg-red-700"
+                  >
+                    {deleteCategory.isPending ? 'Deleting...' : 'Delete Category'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

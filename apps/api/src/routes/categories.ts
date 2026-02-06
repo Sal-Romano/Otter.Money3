@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { CategoryType } from '@prisma/client';
 import { authenticate, requireHousehold } from '../middleware/auth';
 import { AppError } from '../middleware/error';
 import { prisma } from '../utils/prisma';
-import { ERROR_CODES } from '@otter-money/shared';
+import { ERROR_CODES, DEFAULT_CATEGORIES_HIERARCHICAL, HierarchicalCategory } from '@otter-money/shared';
 
 export const categoriesRouter = Router();
 
@@ -44,8 +45,8 @@ interface CategoryWithChildren {
   children: CategoryWithChildren[];
 }
 
-// Helper to verify category belongs to household (and is not system)
-async function getHouseholdCategory(categoryId: string, householdId: string) {
+// Helper to verify category is accessible (system or household-owned)
+async function getAccessibleCategory(categoryId: string, householdId: string) {
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
   });
@@ -54,20 +55,44 @@ async function getHouseholdCategory(categoryId: string, householdId: string) {
     throw new AppError(ERROR_CODES.NOT_FOUND, 'Category not found', 404);
   }
 
-  // System categories can be used but not modified
+  // System categories are accessible to all
   if (category.isSystem) {
-    throw new AppError(
-      ERROR_CODES.FORBIDDEN,
-      'System categories cannot be modified',
-      403
-    );
+    return category;
   }
 
+  // Household categories must belong to user's household
   if (category.householdId !== householdId) {
     throw new AppError(ERROR_CODES.FORBIDDEN, 'Access denied', 403);
   }
 
   return category;
+}
+
+// Helper to count transactions in a category and all its descendants
+async function countCategoryTransactions(categoryId: string): Promise<{ direct: number; nested: number; childrenWithTransactions: string[] }> {
+  const directCount = await prisma.transaction.count({
+    where: { categoryId },
+  });
+
+  const descendants = await getCategoryDescendants(categoryId);
+  let nestedCount = 0;
+  const childrenWithTransactions: string[] = [];
+
+  for (const descId of descendants) {
+    const count = await prisma.transaction.count({
+      where: { categoryId: descId },
+    });
+    if (count > 0) {
+      nestedCount += count;
+      const child = await prisma.category.findUnique({
+        where: { id: descId },
+        select: { name: true },
+      });
+      if (child) childrenWithTransactions.push(child.name);
+    }
+  }
+
+  return { direct: directCount, nested: nestedCount, childrenWithTransactions };
 }
 
 // Helper to build category tree from flat list
@@ -337,13 +362,13 @@ categoriesRouter.post('/', async (req, res, next) => {
   }
 });
 
-// Update custom category
+// Update category (system or custom)
 categoriesRouter.patch('/:id', async (req, res, next) => {
   try {
     const data = updateCategorySchema.parse(req.body);
     const householdId = req.user!.householdId!;
 
-    await getHouseholdCategory(req.params.id, householdId);
+    await getAccessibleCategory(req.params.id, householdId);
 
     // Check for duplicate name if changing
     if (data.name) {
@@ -381,26 +406,57 @@ categoriesRouter.patch('/:id', async (req, res, next) => {
   }
 });
 
-// Delete custom category
+// Check category deletion impact (called before delete to show user options)
+categoriesRouter.get('/:id/deletion-impact', async (req, res, next) => {
+  try {
+    const householdId = req.user!.householdId!;
+    await getAccessibleCategory(req.params.id, householdId);
+
+    const { direct, nested, childrenWithTransactions } = await countCategoryTransactions(req.params.id);
+
+    // Check if category has children
+    const childCount = await prisma.category.count({
+      where: { parentId: req.params.id },
+    });
+
+    res.json({
+      data: {
+        categoryId: req.params.id,
+        directTransactions: direct,
+        nestedTransactions: nested,
+        childrenWithTransactions,
+        childCategoryCount: childCount,
+        canDelete: nested === 0, // Can only delete if no nested transactions
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete category (system or custom)
 categoriesRouter.delete('/:id', async (req, res, next) => {
   try {
     const householdId = req.user!.householdId!;
-    await getHouseholdCategory(req.params.id, householdId);
+    await getAccessibleCategory(req.params.id, householdId);
 
-    // Check if category has transactions
-    const transactionCount = await prisma.transaction.count({
-      where: { categoryId: req.params.id },
-    });
+    // Parse action from query params
+    const action = req.query.action as string | undefined; // 'unassign' | 'reassign'
+    const targetCategoryId = req.query.targetCategoryId as string | undefined;
 
-    if (transactionCount > 0) {
+    // Count transactions
+    const { direct, nested, childrenWithTransactions } = await countCategoryTransactions(req.params.id);
+
+    // Check if category has children with transactions - must resolve those first
+    if (nested > 0) {
       throw new AppError(
         ERROR_CODES.CONFLICT,
-        `Cannot delete category with ${transactionCount} transactions. Reassign transactions first or use merge.`,
+        `This category has subcategories with ${nested} transactions (${childrenWithTransactions.join(', ')}). Please delete or reassign those subcategories first before deleting this parent category.`,
         409
       );
     }
 
-    // Check if category has children
+    // Check if category has children (even without transactions)
     const childCount = await prisma.category.count({
       where: { parentId: req.params.id },
     });
@@ -408,16 +464,84 @@ categoriesRouter.delete('/:id', async (req, res, next) => {
     if (childCount > 0) {
       throw new AppError(
         ERROR_CODES.CONFLICT,
-        `Cannot delete category with ${childCount} subcategories. Delete or move subcategories first.`,
+        `This category has ${childCount} subcategories. Please delete or move them first.`,
         409
       );
     }
 
+    // Handle transactions on this category
+    if (direct > 0) {
+      if (!action) {
+        // Return info about what needs to be done
+        throw new AppError(
+          ERROR_CODES.CONFLICT,
+          `This category has ${direct} transactions. Choose to unassign them (remove category) or reassign them to another category.`,
+          409
+        );
+      }
+
+      if (action === 'reassign') {
+        if (!targetCategoryId) {
+          throw new AppError(
+            ERROR_CODES.VALIDATION_ERROR,
+            'Target category ID is required when reassigning transactions',
+            400
+          );
+        }
+
+        // Verify target category exists and is accessible
+        const target = await getAccessibleCategory(targetCategoryId, householdId);
+
+        // Get source category type
+        const source = await prisma.category.findUnique({
+          where: { id: req.params.id },
+          select: { type: true },
+        });
+
+        if (source && target.type !== source.type) {
+          throw new AppError(
+            ERROR_CODES.VALIDATION_ERROR,
+            'Can only reassign to a category of the same type',
+            400
+          );
+        }
+
+        // Reassign transactions
+        await prisma.transaction.updateMany({
+          where: { categoryId: req.params.id },
+          data: { categoryId: targetCategoryId },
+        });
+      } else if (action === 'unassign') {
+        // Remove category from transactions
+        await prisma.transaction.updateMany({
+          where: { categoryId: req.params.id },
+          data: { categoryId: null },
+        });
+      } else {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_ERROR,
+          'Invalid action. Use "unassign" or "reassign".',
+          400
+        );
+      }
+    }
+
+    // Also delete any rules using this category
+    await prisma.categorizationRule.deleteMany({
+      where: { categoryId: req.params.id },
+    });
+
+    // Delete any budgets for this category
+    await prisma.budget.deleteMany({
+      where: { categoryId: req.params.id },
+    });
+
+    // Now delete the category
     await prisma.category.delete({
       where: { id: req.params.id },
     });
 
-    res.json({ data: { message: 'Category deleted' } });
+    res.json({ data: { message: 'Category deleted', transactionsAffected: direct } });
   } catch (err) {
     next(err);
   }
@@ -442,8 +566,8 @@ categoriesRouter.post('/merge', async (req, res, next) => {
       );
     }
 
-    // Verify source is a household category (can be deleted)
-    const source = await getHouseholdCategory(data.sourceId, householdId);
+    // Verify source category is accessible
+    const source = await getAccessibleCategory(data.sourceId, householdId);
 
     // Verify target exists and is accessible
     const target = await prisma.category.findUnique({
@@ -493,6 +617,87 @@ categoriesRouter.post('/merge', async (req, res, next) => {
     ]);
 
     res.json({ data: { message: 'Categories merged successfully' } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Restore default categories (re-creates missing system categories by name)
+categoriesRouter.post('/restore-defaults', async (req, res, next) => {
+  try {
+    const restored: string[] = [];
+
+    // Helper to restore category tree recursively
+    async function restoreCategoryTree(
+      categories: HierarchicalCategory[],
+      type: CategoryType,
+      parentId: string | null,
+      depth: number,
+      startingOrder: number = 0
+    ): Promise<number> {
+      let displayOrder = startingOrder;
+
+      for (const cat of categories) {
+        // Check if category exists by name and type
+        const existing = await prisma.category.findFirst({
+          where: {
+            name: cat.name,
+            type: type,
+            isSystem: true,
+            householdId: null,
+          },
+        });
+
+        let categoryId: string;
+
+        if (!existing) {
+          // Create the missing category
+          const created = await prisma.category.create({
+            data: {
+              name: cat.name,
+              type,
+              icon: cat.icon,
+              color: cat.color || null,
+              parentId,
+              depth,
+              displayOrder,
+              isSystem: true,
+              householdId: null,
+            },
+          });
+          categoryId = created.id;
+          restored.push(cat.name);
+        } else {
+          categoryId = existing.id;
+        }
+
+        displayOrder++;
+
+        // Restore children recursively
+        if (cat.children && cat.children.length > 0) {
+          await restoreCategoryTree(cat.children, type, categoryId, depth + 1, 0);
+        }
+      }
+
+      return displayOrder;
+    }
+
+    // Restore for each type
+    for (const type of ['EXPENSE', 'INCOME', 'TRANSFER'] as CategoryType[]) {
+      const categories = DEFAULT_CATEGORIES_HIERARCHICAL[type];
+      if (categories && categories.length > 0) {
+        await restoreCategoryTree(categories, type, null, 0);
+      }
+    }
+
+    res.json({
+      data: {
+        message: restored.length > 0
+          ? `Restored ${restored.length} categories: ${restored.join(', ')}`
+          : 'All default categories already exist',
+        restored,
+      },
+    });
   } catch (err) {
     next(err);
   }

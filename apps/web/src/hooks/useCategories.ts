@@ -290,11 +290,53 @@ export function useUpdateCategory() {
   });
 }
 
+export function useCategoryDeletionImpact() {
+  return {
+    checkImpact: async (categoryId: string) => {
+      return api.get<{
+        categoryId: string;
+        directTransactions: number;
+        nestedTransactions: number;
+        childrenWithTransactions: string[];
+        childCategoryCount: number;
+        canDelete: boolean;
+      }>(`/categories/${categoryId}/deletion-impact`);
+    },
+  };
+}
+
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => api.delete<{ message: string }>(`/categories/${id}`),
+    mutationFn: ({
+      id,
+      action,
+      targetCategoryId,
+    }: {
+      id: string;
+      action?: 'unassign' | 'reassign';
+      targetCategoryId?: string;
+    }) => {
+      const params = new URLSearchParams();
+      if (action) params.set('action', action);
+      if (targetCategoryId) params.set('targetCategoryId', targetCategoryId);
+      const queryString = params.toString();
+      return api.delete<{ message: string; transactionsAffected?: number }>(
+        `/categories/${id}${queryString ? `?${queryString}` : ''}`
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+    },
+  });
+}
+
+export function useRestoreDefaultCategories() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => api.post<{ message: string; restored: string[] }>('/categories/restore-defaults', {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
     },
