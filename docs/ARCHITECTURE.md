@@ -679,3 +679,53 @@ EMAIL_FROM=no-reply@otter.money
 ### Development
 
 In development (no AWS credentials), emails are logged to console instead of sent.
+
+---
+
+## Responsive Design & Layout
+
+### Breakpoint Strategy
+
+| Breakpoint | Width | Layout |
+|------------|-------|--------|
+| Mobile (default) | < 768px | Bottom navigation, full-width content |
+| Desktop (md:) | ≥ 768px | Sidebar navigation, constrained content |
+
+### Desktop Layout Structure
+
+```
+┌──────────┬─────────────────────────┬──────────┐
+│  72px    │   max-w-2xl centered    │  72px    │
+│  Left    │                         │  Right   │
+│ Sidebar  │      Main Content       │  Pane    │
+│          │                         │ (Future) │
+│  [Nav]   │      <Outlet />         │ Wally AI │
+└──────────┴─────────────────────────┴──────────┘
+```
+
+### Layout Component (Layout.tsx)
+
+The Layout component handles both mobile and desktop layouts:
+
+- **Mobile (<768px)**: Fixed bottom navigation with 5 nav items
+- **Desktop (≥768px)**:
+  - Fixed left sidebar (72px) with logo + vertical nav
+  - Fixed right pane (72px) placeholder for Wally AI
+  - Main content centered with max-width constraint
+
+### Navigation Items
+
+| Route | Label | Icon |
+|-------|-------|------|
+| `/` | Home | HomeIcon |
+| `/transactions` | Transactions | ListIcon |
+| `/accounts` | Accounts | WalletIcon |
+| `/analytics` | Analytics | AnalyticsIcon |
+| `/settings` | Settings | SettingsIcon |
+
+### Design Decisions
+
+1. **72px sidebars**: Compact but readable with icon + label
+2. **max-w-2xl content**: ~672px max width for readability on wide screens
+3. **Fixed positioning**: Sidebars stay visible during scroll
+4. **No JavaScript**: Layout switch handled purely by Tailwind responsive classes

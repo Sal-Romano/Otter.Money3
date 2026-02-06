@@ -11,14 +11,72 @@ const navItems = [
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      {/* Main content */}
-      <main className="flex-1 pb-20">
-        <Outlet />
-      </main>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Desktop Left Sidebar */}
+      <aside className="hidden md:flex md:w-[72px] md:fixed md:inset-y-0 md:left-0 md:z-50 md:flex-col md:items-center md:border-r md:border-gray-200 md:bg-white md:py-4">
+        {/* Logo */}
+        <div className="mb-6">
+          <img
+            src="/images/otters_logo_vector_nobg.svg"
+            alt="Otter Money"
+            className="h-10 w-10"
+          />
+        </div>
 
-      {/* Bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white pb-safe">
+        {/* Navigation */}
+        <nav className="flex flex-1 flex-col items-center gap-1">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              className={({ isActive }) =>
+                clsx(
+                  'flex flex-col items-center justify-center w-16 py-2 rounded-lg text-xs transition-colors',
+                  isActive
+                    ? 'text-primary bg-primary/10'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className="mb-1 h-5 w-5" filled={isActive} />
+                  <span className="text-[10px]">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col md:ml-[72px] md:mr-[72px]">
+        <main className="flex-1 pb-20 md:pb-6">
+          <div className="md:mx-auto md:max-w-2xl lg:max-w-3xl">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+
+      {/* Desktop Right Pane */}
+      <aside className="hidden md:flex md:w-[72px] md:fixed md:inset-y-0 md:right-0 md:z-50 md:flex-col md:items-center md:justify-center md:border-l md:border-gray-200 md:bg-white">
+        <div className="flex flex-col items-center text-center px-2">
+          <img
+            src="/images/otter_swimming_vector.svg"
+            alt=""
+            className="h-8 w-8 mb-2 opacity-50"
+          />
+          <span className="text-[9px] text-gray-400 leading-tight">
+            Wally AI
+            <br />
+            Coming Soon
+          </span>
+        </div>
+      </aside>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white pb-safe md:hidden">
         <div className="mx-auto flex max-w-lg items-center justify-around">
           {navItems.map((item) => (
             <NavLink

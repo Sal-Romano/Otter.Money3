@@ -247,6 +247,25 @@ Development is organized into sprints, each delivering a working increment of th
 
 ---
 
+## Sprint 9.5: Desktop UX Redux
+**Status:** 🟢 Complete
+**Goal:** Improve desktop layout with sidebar navigation and constrained content
+
+### Tasks
+- [x] Add desktop left sidebar navigation (md: breakpoint)
+- [x] Add desktop right pane placeholder (Wally AI future)
+- [x] Constrain main content width on desktop (max-w-2xl)
+- [x] Keep mobile bottom navigation unchanged
+- [x] Adjust Wally FAB for desktop layout
+- [x] Update ARCHITECTURE.md with responsive design section
+
+### Deliverables
+- Three-column desktop layout (sidebar / content / placeholder)
+- Mobile layout unchanged (bottom nav)
+- Documented responsive design patterns
+
+---
+
 ## Sprint 10: SimpleFin Integration
 **Status:** ⚪ Not Started
 **Goal:** Alternative bank connection for institutions not on Plaid

@@ -391,9 +391,9 @@ export default function Dashboard() {
         <UpcomingBillsWidget />
       </section>
 
-      {/* Wally FAB - Placeholder */}
+      {/* Wally FAB - Placeholder (mobile only, desktop has right pane) */}
       <button
-        className="fixed bottom-24 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-24 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
         onClick={() => alert('Wally AI coming soon!')}
         aria-label="Chat with Wally"
       >
