@@ -1,7 +1,7 @@
 import express from 'express';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
-import { plaidClient, mapPlaidAccountType } from '../utils/plaid';
+import { plaidClient, mapPlaidAccountType, normalizeTransactionAmount } from '../utils/plaid';
 import { mapPlaidCategory, getCategoryIdByName } from '../utils/categoryMapping';
 import { CountryCode, Products } from 'plaid';
 import { authenticate, requireHousehold } from '../middleware/auth';
@@ -297,6 +297,12 @@ router.post('/sync-transactions', async (req, res, next) => {
 
       const { added, modified, removed, next_cursor, has_more } = response.data;
 
+      // Debug log for transaction sync - shows raw Plaid data
+      console.log(`[PLAID SYNC] Institution: ${plaidItem.institutionName}, Processing ${added.length} added, ${modified.length} modified, ${removed.length} removed`);
+      for (const tx of added) {
+        console.log(`[PLAID TX RAW] date: ${tx.date} | amount: ${tx.amount} | name: "${tx.name}" | merchant: "${tx.merchant_name}" | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`);
+      }
+
       // Process added transactions
       for (const tx of added) {
         const account = accounts.find((a) => a.plaidAccountId === tx.account_id);
@@ -314,12 +320,19 @@ router.post('/sync-transactions', async (req, res, next) => {
           }
         }
 
+        // Normalize amount based on description (handles institutions like PenFed with non-standard sign conventions)
+        const normalizedAmount = normalizeTransactionAmount(
+          tx.amount,
+          tx.name,
+          tx.personal_finance_category
+        );
+
         const transaction = await prisma.transaction.upsert({
           where: {
             externalId: tx.transaction_id,
           },
           update: {
-            amount: -tx.amount, // Plaid uses positive for outflows, we use negative
+            amount: normalizedAmount,
             merchantName: tx.merchant_name || undefined,
             description: tx.name,
             date: new Date(tx.date),
@@ -329,7 +342,7 @@ router.post('/sync-transactions', async (req, res, next) => {
           create: {
             accountId: account.id,
             externalId: tx.transaction_id,
-            amount: -tx.amount,
+            amount: normalizedAmount,
             merchantName: tx.merchant_name || undefined,
             description: tx.name,
             date: new Date(tx.date),
@@ -363,12 +376,18 @@ router.post('/sync-transactions', async (req, res, next) => {
         const account = accounts.find((a) => a.plaidAccountId === tx.account_id);
         if (!account) continue;
 
+        const normalizedAmount = normalizeTransactionAmount(
+          tx.amount,
+          tx.name,
+          tx.personal_finance_category
+        );
+
         await prisma.transaction.updateMany({
           where: {
             externalId: tx.transaction_id,
           },
           data: {
-            amount: -tx.amount,
+            amount: normalizedAmount,
             merchantName: tx.merchant_name || undefined,
             description: tx.name,
             date: new Date(tx.date),
@@ -651,6 +670,12 @@ async function syncPlaidTransactions(plaidItem: {
 
       const { added, modified, removed, next_cursor, has_more } = response.data;
 
+      // Debug log for transaction sync (webhook) - shows raw Plaid data
+      console.log(`[PLAID WEBHOOK SYNC] Institution: ${plaidItem.institutionName}, Processing ${added.length} added, ${modified.length} modified, ${removed.length} removed`);
+      for (const tx of added) {
+        console.log(`[PLAID TX RAW] date: ${tx.date} | amount: ${tx.amount} | name: "${tx.name}" | merchant: "${tx.merchant_name}" | category: ${tx.personal_finance_category?.primary}/${tx.personal_finance_category?.detailed}`);
+      }
+
       // Process added transactions
       for (const tx of added) {
         const account = accounts.find((a) => a.plaidAccountId === tx.account_id);
@@ -671,10 +696,17 @@ async function syncPlaidTransactions(plaidItem: {
           }
         }
 
+        // Normalize amount based on description (handles institutions like PenFed with non-standard sign conventions)
+        const normalizedAmount = normalizeTransactionAmount(
+          tx.amount,
+          tx.name,
+          tx.personal_finance_category
+        );
+
         const transaction = await prisma.transaction.upsert({
           where: { externalId: tx.transaction_id },
           update: {
-            amount: -tx.amount,
+            amount: normalizedAmount,
             merchantName: tx.merchant_name || undefined,
             description: tx.name,
             date: new Date(tx.date),
@@ -684,7 +716,7 @@ async function syncPlaidTransactions(plaidItem: {
           create: {
             accountId: account.id,
             externalId: tx.transaction_id,
-            amount: -tx.amount,
+            amount: normalizedAmount,
             merchantName: tx.merchant_name || undefined,
             description: tx.name,
             date: new Date(tx.date),
@@ -718,10 +750,16 @@ async function syncPlaidTransactions(plaidItem: {
         const account = accounts.find((a) => a.plaidAccountId === tx.account_id);
         if (!account) continue;
 
+        const normalizedModAmount = normalizeTransactionAmount(
+          tx.amount,
+          tx.name,
+          tx.personal_finance_category
+        );
+
         await prisma.transaction.updateMany({
           where: { externalId: tx.transaction_id },
           data: {
-            amount: -tx.amount,
+            amount: normalizedModAmount,
             merchantName: tx.merchant_name || undefined,
             description: tx.name,
             date: new Date(tx.date),

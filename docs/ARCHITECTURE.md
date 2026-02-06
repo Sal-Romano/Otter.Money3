@@ -474,6 +474,8 @@ POST   /api/plaid/webhook         # Webhook handler
 DELETE /api/plaid/item/:id        # Remove Plaid item
 ```
 
+**Amount Normalization:** Some institutions (e.g., PenFed) send transfer transactions with non-standard sign conventions. The `normalizeTransactionAmount()` utility in `apps/api/src/utils/plaid.ts` detects DEBIT/CREDIT keywords in transaction descriptions to ensure correct signage.
+
 ### SimpleFin Integration (per household)
 ```
 GET    /api/simplefin/status      # Get connection status
