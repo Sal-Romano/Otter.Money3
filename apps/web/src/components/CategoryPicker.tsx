@@ -306,7 +306,7 @@ export function CategoryPicker({
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               {isLoading ? (
                 <div className="p-8 text-center text-gray-500">
                   Loading categories...
