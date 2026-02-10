@@ -51,7 +51,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col md:ml-[72px] md:mr-[72px]">
+      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden md:ml-[72px] md:mr-[72px]">
         <main className="flex-1 pb-20 md:pb-6">
           <div className="md:mx-auto md:max-w-2xl lg:max-w-3xl">
             <Outlet />
