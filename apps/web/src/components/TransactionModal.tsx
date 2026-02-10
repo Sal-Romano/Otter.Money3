@@ -8,6 +8,7 @@ import {
   useDeleteTransaction,
 } from '../hooks/useTransactions';
 import { CategoryPicker } from './CategoryPicker';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { CategoryType } from '@otter-money/shared';
 
 interface Transaction {
@@ -68,6 +69,8 @@ export function TransactionModal({
     createTransaction.isPending ||
     updateTransaction.isPending ||
     deleteTransaction.isPending;
+
+  useBodyScrollLock(isOpen);
 
   // Reset form when modal opens
   useEffect(() => {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { useCategoriesTreeByType, useCreateCategory, useUpdateCategory, useDeleteCategory, useCategoryDeletionImpact, useRestoreDefaultCategories, useCategoriesFlat } from '../hooks/useCategories';
 import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '../components/CategoryIcon';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ChevronDown, ChevronRight, Trash2, Plus, Pencil, X, Check } from 'lucide-react';
 import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
 
@@ -50,6 +51,8 @@ export default function Settings() {
   const [isDissolving, setIsDissolving] = useState(false);
 
   const isOrganizer = user?.householdRole === 'ORGANIZER';
+  const anyModalOpen = showRemoveConfirm || showLeaveConfirm || showDissolveConfirm;
+  useBodyScrollLock(anyModalOpen);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -581,6 +584,8 @@ function CategoriesSection() {
   const [editColor, setEditColor] = useState('');
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [iconSearch, setIconSearch] = useState('');
+
+  useBodyScrollLock(deleteModal !== null);
 
   // Preset colors for the color picker
   const colorOptions = [

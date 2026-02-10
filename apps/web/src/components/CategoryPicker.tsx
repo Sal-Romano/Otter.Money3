@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { Search, ChevronRight, ChevronDown, Check, X } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 import { useCategoriesTreeByType, useCategoryById, flattenTreeWithPath } from '../hooks/useCategories';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { CategoryType, CategoryTreeNode, CategoryWithPath } from '@otter-money/shared';
 
 interface CategoryPickerProps {
@@ -31,6 +32,8 @@ export function CategoryPicker({
 
   const { data: tree, isLoading } = useCategoriesTreeByType(categoryType);
   const { data: selectedCategory } = useCategoryById(value);
+
+  useBodyScrollLock(isOpen);
 
   // Auto-expand parents of selected category
   useEffect(() => {

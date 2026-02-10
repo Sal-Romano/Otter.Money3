@@ -4,6 +4,7 @@ import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { useCreateAccount, useUpdateAccount, useUpdateBalance, useDeleteAccount } from '../hooks/useAccounts';
 import { AccountIcon, accountTypeLabels } from './AccountIcon';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface AccountModalProps {
   account?: AccountWithOwner | null;
@@ -46,6 +47,8 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
     updateAccount.isPending ||
     updateBalance.isPending ||
     deleteAccount.isPending;
+
+  useBodyScrollLock(isOpen);
 
   // Reset form when modal opens/closes or account changes
   useEffect(() => {

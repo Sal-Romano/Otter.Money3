@@ -3,6 +3,7 @@ import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
 import { usePlaidLinkConnect, usePlaidItems, usePlaidSync } from '../hooks/usePlaidLink';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 
 // Group accounts by type
@@ -284,6 +285,8 @@ interface BankConnectionsModalProps {
 function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClose }: BankConnectionsModalProps) {
   const { syncTransactions } = usePlaidSync();
   const [syncingItemId, setSyncingItemId] = useState<string | null>(null);
+
+  useBodyScrollLock(true);
 
   const handleSync = async (itemId: string, institutionName?: string) => {
     try {
