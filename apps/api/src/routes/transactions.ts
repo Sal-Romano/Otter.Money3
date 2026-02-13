@@ -1,11 +1,13 @@
-import { Router } from 'express';
+import { Router, json } from 'express';
 import { z } from 'zod';
 import { Decimal } from '@prisma/client/runtime/library';
 import { authenticate, requireHousehold } from '../middleware/auth';
 import { AppError } from '../middleware/error';
 import { prisma } from '../utils/prisma';
 import { ERROR_CODES } from '@otter-money/shared';
-import { applyRulesToTransaction } from '../services/ruleEngine';
+import { applyRulesToTransaction, applyRulesToTransactions } from '../services/ruleEngine';
+import { csvRow, parseCSV, normalizeColumnName, parseDate as parseDateCSV, parseAmount, resolveAmountSign } from '../utils/csvParser';
+import { processImport } from '../services/importMatcher';
 
 export const transactionsRouter = Router();
 
@@ -176,6 +178,116 @@ transactionsRouter.get('/', async (req, res, next) => {
         offset: Number(offset),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Export transactions as CSV
+transactionsRouter.get('/export', async (req, res, next) => {
+  try {
+    const {
+      accountId,
+      categoryId,
+      ownerId,
+      startDate,
+      endDate,
+      search,
+    } = req.query;
+
+    const householdId = req.user!.householdId!;
+
+    // Build where clause (same logic as GET /)
+    const where: any = {
+      account: { householdId },
+      isAdjustment: false,
+    };
+
+    if (accountId) where.accountId = String(accountId);
+    if (categoryId) {
+      if (categoryId === 'uncategorized') {
+        where.categoryId = null;
+      } else {
+        where.categoryId = String(categoryId);
+      }
+    }
+    if (ownerId) {
+      if (ownerId === 'joint') {
+        where.account.ownerId = null;
+      } else {
+        where.account.ownerId = String(ownerId);
+      }
+    }
+    if (startDate) where.date = { ...where.date, gte: new Date(String(startDate)) };
+    if (endDate) where.date = { ...where.date, lte: new Date(String(endDate)) };
+    if (search) {
+      const searchStr = String(search);
+      where.OR = [
+        { description: { contains: searchStr, mode: 'insensitive' } },
+        { merchantName: { contains: searchStr, mode: 'insensitive' } },
+      ];
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      where,
+      include: {
+        account: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            ownerId: true,
+            owner: { select: { id: true, name: true } },
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parentId: true,
+            parent: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    // Build CSV
+    const header = csvRow(['ID', 'ExternalID', 'Date', 'Amount', 'Type', 'Description', 'Merchant', 'Category', 'Account', 'Owner', 'Notes', 'IsManual']);
+
+    const rows = transactions.map((tx) => {
+      const amount = Number(tx.amount);
+      const type = amount < 0 ? 'expense' : 'income';
+      const categoryName = tx.category
+        ? tx.category.parent
+          ? `${tx.category.parent.name} > ${tx.category.name}`
+          : tx.category.name
+        : '';
+      const ownerName = tx.account.owner?.name || 'Joint';
+
+      return csvRow([
+        tx.id,
+        tx.externalId,
+        tx.date.toISOString().split('T')[0],
+        amount,
+        type,
+        tx.description,
+        tx.merchantName,
+        categoryName,
+        tx.account.name,
+        ownerName,
+        tx.notes,
+        tx.isManual,
+      ]);
+    });
+
+    const csv = [header, ...rows].join('\n');
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="otter-money-transactions-${dateStr}.csv"`);
+    res.send(csv);
   } catch (err) {
     next(err);
   }
@@ -388,6 +500,76 @@ transactionsRouter.delete('/:id', async (req, res, next) => {
 
     res.json({ data: { message: 'Transaction deleted' } });
   } catch (err) {
+    next(err);
+  }
+});
+
+// Import preview - parse CSV, match against existing, return preview
+transactionsRouter.post('/import/preview', json({ limit: '10mb' }), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      csvContent: z.string().min(1),
+      defaultAccountId: z.string().optional().nullable(),
+    });
+
+    const data = schema.parse(req.body);
+    const householdId = req.user!.householdId!;
+
+    // Verify default account if provided
+    if (data.defaultAccountId) {
+      await verifyAccountAccess(data.defaultAccountId, householdId);
+    }
+
+    const result = await processImport(
+      data.csvContent,
+      householdId,
+      data.defaultAccountId || null,
+      'preview'
+    );
+
+    res.json({ data: result });
+  } catch (err: any) {
+    if (err.message?.includes('CSV')) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: err.message, statusCode: 400 },
+      });
+    }
+    next(err);
+  }
+});
+
+// Import execute - apply the import
+transactionsRouter.post('/import/execute', json({ limit: '10mb' }), async (req, res, next) => {
+  try {
+    const schema = z.object({
+      csvContent: z.string().min(1),
+      defaultAccountId: z.string().optional().nullable(),
+      skipRowNumbers: z.array(z.number()).optional().default([]),
+    });
+
+    const data = schema.parse(req.body);
+    const householdId = req.user!.householdId!;
+
+    // Verify default account if provided
+    if (data.defaultAccountId) {
+      await verifyAccountAccess(data.defaultAccountId, householdId);
+    }
+
+    const result = await processImport(
+      data.csvContent,
+      householdId,
+      data.defaultAccountId || null,
+      'execute',
+      data.skipRowNumbers
+    );
+
+    res.json({ data: result });
+  } catch (err: any) {
+    if (err.message?.includes('CSV')) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: err.message, statusCode: 400 },
+      });
+    }
     next(err);
   }
 });

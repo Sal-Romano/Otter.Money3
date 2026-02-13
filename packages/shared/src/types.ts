@@ -405,3 +405,51 @@ export interface DetectionResult {
   updated: number;
   patterns: RecurringTransactionWithDetails[];
 }
+
+// ============================================
+// IMPORT / EXPORT
+// ============================================
+
+export interface ImportPreviewParsed {
+  date: string;
+  amount: number;
+  description: string;
+  merchant?: string;
+  category?: string;
+  categoryId?: string | null;
+  accountId: string;
+  accountName: string;
+  notes?: string;
+}
+
+export interface ImportPreviewMatchedTransaction {
+  id: string;
+  date: string;
+  amount: number;
+  description: string;
+  isManual: boolean;
+}
+
+export interface ImportPreviewRow {
+  rowNumber: number;
+  action: 'create' | 'update' | 'skip';
+  parsed: ImportPreviewParsed;
+  matchedTransaction?: ImportPreviewMatchedTransaction | null;
+  matchConfidence?: number | null;
+  skipReason?: string | null;
+  warnings: string[];
+}
+
+export interface ImportPreviewResponse {
+  totalRows: number;
+  summary: { create: number; update: number; skip: number };
+  rows: ImportPreviewRow[];
+}
+
+export interface ImportExecuteResponse {
+  created: number;
+  updated: number;
+  skipped: number;
+  rulesApplied: number;
+  skippedDetails: { rowNumber: number; reason: string }[];
+}

@@ -266,6 +266,37 @@ Development is organized into sprints, each delivering a working increment of th
 
 ---
 
+## Sprint 9.6: Transaction Import/Export & Toast Notifications
+**Status:** 🟢 Complete
+**Goal:** CSV export/import with smart dedup, preview, and rule engine integration; modernize notifications with Sonner
+
+### Tasks
+- [x] Install and configure Sonner toast notification library
+- [x] Replace all browser alert() calls with toast.success/toast.error
+- [x] Build CSV parser utility (RFC 4180 compliant)
+- [x] Build CSV export endpoint (GET /api/transactions/export)
+- [x] Add export button to Transactions page header (with current filters)
+- [x] Build import matcher service with smart dedup algorithm
+- [x] Build import preview endpoint (POST /api/transactions/import/preview)
+- [x] Build import execute endpoint (POST /api/transactions/import/execute)
+- [x] Build ImportWizardModal with 5-step flow (upload, account, preview, importing, results)
+- [x] Add Import & Export section to Settings page
+- [x] Add shared types for import/export responses
+- [x] Handle overlap with Plaid-synced transactions (fuzzy matching by date/amount/description)
+- [x] Apply categorization rules engine to imported transactions
+- [x] Skip invalid rows with user notification (preview shows skip reasons)
+- [x] Follow edit rules (manual vs synced balance handling)
+
+### Deliverables
+- Export transactions to CSV (filtered or all)
+- Import from CSV with multi-step wizard and preview
+- Smart dedup: ID-based exact match + fuzzy match (date/amount/description)
+- Rule engine auto-categorizes imported transactions
+- Skipped rows shown with reasons in preview and results
+- Sonner toasts replace all browser alerts app-wide
+
+---
+
 ## Sprint 10: SimpleFin Integration
 **Status:** ⚪ Not Started
 **Goal:** Alternative bank connection for institutions not on Plaid

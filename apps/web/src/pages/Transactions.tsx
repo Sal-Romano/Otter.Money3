@@ -1,10 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useTransactions, TransactionWithOwner } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { TransactionModal } from '../components/TransactionModal';
+import { ImportWizardModal } from '../components/ImportWizardModal';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { useAuthStore } from '../stores/auth';
 
 type Transaction = TransactionWithOwner;
 
@@ -19,6 +22,8 @@ export default function Transactions() {
   // Modal state
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Data hooks
   const { data: transactionsData, isLoading, error } = useTransactions({
@@ -93,6 +98,40 @@ export default function Transactions() {
     });
   };
 
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      const { accessToken } = useAuthStore.getState();
+      const params = new URLSearchParams();
+      if (accountFilter) params.set('accountId', accountFilter);
+      if (categoryFilter) params.set('categoryId', categoryFilter);
+      if (ownerFilter) params.set('ownerId', ownerFilter);
+      if (search) params.set('search', search);
+
+      const queryString = params.toString();
+      const url = `/api/transactions/export${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `otter-money-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+      toast.success('Transactions exported');
+    } catch {
+      toast.error('Failed to export transactions');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [accountFilter, categoryFilter, ownerFilter, search]);
+
   const activeFiltersCount = [accountFilter, categoryFilter, ownerFilter].filter(Boolean).length;
 
   if (error) {
@@ -114,10 +153,27 @@ export default function Transactions() {
             <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
             <p className="text-sm text-gray-500">{total} transactions</p>
           </div>
-          <button onClick={handleAddTransaction} className="btn-primary">
-            <PlusIcon className="mr-1 h-4 w-4" />
-            Add
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className="btn-ghost p-2"
+              title="Export CSV"
+            >
+              <ExportIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setIsImportOpen(true)}
+              className="btn-ghost p-2"
+              title="Import CSV"
+            >
+              <ImportIcon className="h-5 w-5" />
+            </button>
+            <button onClick={handleAddTransaction} className="btn-primary">
+              <PlusIcon className="mr-1 h-4 w-4" />
+              Add
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -308,6 +364,12 @@ export default function Transactions() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
+
+      {/* Import Wizard */}
+      <ImportWizardModal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+      />
     </div>
   );
 }
@@ -372,6 +434,22 @@ function ReceiptIcon({ className }: { className: string }) {
         strokeLinejoin="round"
         d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"
       />
+    </svg>
+  );
+}
+
+function ExportIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+  );
+}
+
+function ImportIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
     </svg>
   );
 }

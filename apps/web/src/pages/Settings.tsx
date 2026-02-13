@@ -6,6 +6,7 @@ import { useCategoriesTreeByType, useCreateCategory, useUpdateCategory, useDelet
 import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '../components/CategoryIcon';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ChevronDown, ChevronRight, Trash2, Plus, Pencil, X, Check } from 'lucide-react';
+import { ImportWizardModal } from '../components/ImportWizardModal';
 import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
 
 interface HouseholdMember {
@@ -51,6 +52,10 @@ export default function Settings() {
   const [dissolveImpact, setDissolveImpact] = useState<DissolveImpact | null>(null);
   const [isDissolving, setIsDissolving] = useState(false);
 
+  // Import/Export
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
   const isOrganizer = user?.householdRole === 'ORGANIZER';
   const anyModalOpen = showRemoveConfirm || showLeaveConfirm || showDissolveConfirm;
   useBodyScrollLock(anyModalOpen);
@@ -87,6 +92,28 @@ export default function Settings() {
 
     fetchData();
   }, [accessToken]);
+
+  const handleExportAll = async () => {
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/transactions/export', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error('Export failed');
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `otter-money-transactions-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+      toast.success('Transactions exported');
+    } catch {
+      toast.error('Failed to export transactions');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleCopyInvite = async () => {
     try {
@@ -356,6 +383,29 @@ export default function Settings() {
         </button>
       </section>
 
+      {/* Import & Export */}
+      <section className="card">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Import & Export</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Export your transactions as a CSV file, or import transactions from a CSV.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={handleExportAll}
+            disabled={isExporting}
+            className="flex-1 btn-secondary"
+          >
+            {isExporting ? 'Exporting...' : 'Export All'}
+          </button>
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="flex-1 btn-primary"
+          >
+            Import CSV
+          </button>
+        </div>
+      </section>
+
       {/* About */}
       <section className="card">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">About</h2>
@@ -496,6 +546,9 @@ export default function Settings() {
       )}
 
       {/* Dissolve Household Confirmation Modal (for organizers) */}
+      {/* Import Wizard Modal */}
+      <ImportWizardModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} />
+
       {showDissolveConfirm && dissolveImpact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6">
