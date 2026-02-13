@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { toast } from 'sonner';
 import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { useCreateAccount, useUpdateAccount, useUpdateBalance, useDeleteAccount } from '../hooks/useAccounts';
@@ -113,7 +114,7 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
 
     // Prevent deletion of Plaid-connected accounts
     if (account.connectionType === 'PLAID') {
-      alert('Plaid-connected accounts cannot be deleted individually. Please disconnect the bank connection from the Accounts page to remove all associated accounts.');
+      toast.error('Plaid-connected accounts cannot be deleted individually. Please disconnect the bank connection from the Accounts page.');
       return;
     }
 

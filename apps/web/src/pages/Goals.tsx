@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   useGoals,
   useDeleteGoal,
@@ -38,7 +39,7 @@ export default function Goals() {
       await deleteGoal.mutateAsync(goalId);
     } catch (err) {
       console.error('Failed to delete goal:', err);
-      alert('Failed to delete goal. Please try again.');
+      toast.error('Failed to delete goal. Please try again.');
     }
   };
 

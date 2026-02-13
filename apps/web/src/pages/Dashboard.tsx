@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAuthStore } from '../stores/auth';
 import { useDashboardSummary, useNetWorthHistory } from '../hooks/useDashboard';
 import { useBudgetSpending, getCurrentPeriod } from '../hooks/useBudgets';
@@ -394,7 +395,7 @@ export default function Dashboard() {
       {/* Wally FAB - Placeholder (mobile only, desktop has right pane) */}
       <button
         className="fixed bottom-24 right-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 active:scale-95 md:hidden"
-        onClick={() => alert('Wally AI coming soon!')}
+        onClick={() => toast('Wally AI coming soon!')}
         aria-label="Chat with Wally"
       >
         <img

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
@@ -256,14 +257,12 @@ export default function Accounts() {
 
                 // Show success message with counts
                 if (result) {
-                  alert(
-                    `Successfully disconnected!\n\n` +
-                    `Removed ${result.accountsDeleted} account${result.accountsDeleted !== 1 ? 's' : ''} ` +
-                    `and ${result.transactionsDeleted} transaction${result.transactionsDeleted !== 1 ? 's' : ''}.`
+                  toast.success(
+                    `Disconnected! Removed ${result.accountsDeleted} account${result.accountsDeleted !== 1 ? 's' : ''} and ${result.transactionsDeleted} transaction${result.transactionsDeleted !== 1 ? 's' : ''}.`
                   );
                 }
               } catch (err) {
-                alert('Failed to disconnect. Please try again.');
+                toast.error('Failed to disconnect. Please try again.');
               }
             }
           }}
@@ -293,14 +292,11 @@ function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClo
       setSyncingItemId(itemId);
       const result = await syncTransactions(itemId);
       onRefresh();
-      alert(
-        `Synced ${institutionName || 'bank'}!\n\n` +
-        `Added: ${result.added}\n` +
-        `Modified: ${result.modified}\n` +
-        `Removed: ${result.removed}`
+      toast.success(
+        `Synced ${institutionName || 'bank'}! Added: ${result.added}, Modified: ${result.modified}, Removed: ${result.removed}`
       );
     } catch (err) {
-      alert('Failed to sync transactions. Please try again.');
+      toast.error('Failed to sync transactions. Please try again.');
     } finally {
       setSyncingItemId(null);
     }

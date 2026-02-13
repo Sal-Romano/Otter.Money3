@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   useBudgets,
   useBudgetSpending,
@@ -42,7 +43,7 @@ export default function Budget() {
       await deleteBudget.mutateAsync({ id: budgetId, period: selectedPeriod });
     } catch (err) {
       console.error('Failed to delete budget:', err);
-      alert('Failed to delete budget. Please try again.');
+      toast.error('Failed to delete budget. Please try again.');
     }
   };
 
@@ -59,10 +60,10 @@ export default function Budget() {
         fromPeriod: prevPeriod,
         toPeriod: selectedPeriod,
       });
-      alert(result.message);
+      toast.success(result.message);
     } catch (err: any) {
       console.error('Failed to copy budgets:', err);
-      alert(err.message || 'Failed to copy budgets. Please try again.');
+      toast.error(err.message || 'Failed to copy budgets. Please try again.');
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   useRecurringTransactions,
   useDeleteRecurring,
@@ -50,7 +51,7 @@ export default function Recurring() {
       await deleteRecurring.mutateAsync(id);
     } catch (err) {
       console.error('Failed to delete:', err);
-      alert('Failed to delete recurring transaction');
+      toast.error('Failed to delete recurring transaction');
     }
   };
 
@@ -59,7 +60,7 @@ export default function Recurring() {
       await confirmRecurring.mutateAsync(id);
     } catch (err) {
       console.error('Failed to confirm:', err);
-      alert('Failed to confirm');
+      toast.error('Failed to confirm');
     }
   };
 
@@ -68,7 +69,7 @@ export default function Recurring() {
       await dismissRecurring.mutateAsync(id);
     } catch (err) {
       console.error('Failed to dismiss:', err);
-      alert('Failed to dismiss');
+      toast.error('Failed to dismiss');
     }
   };
 
@@ -77,7 +78,7 @@ export default function Recurring() {
       await pauseRecurring.mutateAsync(id);
     } catch (err) {
       console.error('Failed to pause:', err);
-      alert('Failed to pause');
+      toast.error('Failed to pause');
     }
   };
 
@@ -86,7 +87,7 @@ export default function Recurring() {
       await resumeRecurring.mutateAsync(id);
     } catch (err) {
       console.error('Failed to resume:', err);
-      alert('Failed to resume');
+      toast.error('Failed to resume');
     }
   };
 
@@ -96,17 +97,17 @@ export default function Recurring() {
       await endRecurring.mutateAsync(id);
     } catch (err) {
       console.error('Failed to end:', err);
-      alert('Failed to mark as ended');
+      toast.error('Failed to mark as ended');
     }
   };
 
   const handleDetect = async () => {
     try {
       const result = await detectRecurring.mutateAsync();
-      alert(result.message);
+      toast.success(result.message);
     } catch (err: any) {
       console.error('Failed to detect:', err);
-      alert(err.message || 'Failed to detect recurring patterns');
+      toast.error(err.message || 'Failed to detect recurring patterns');
     }
   };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAuthStore } from '../stores/auth';
 import { useCategoriesTreeByType, useCreateCategory, useUpdateCategory, useDeleteCategory, useCategoryDeletionImpact, useRestoreDefaultCategories, useCategoriesFlat } from '../hooks/useCategories';
 import { CategoryIcon, CATEGORY_ICON_OPTIONS } from '../components/CategoryIcon';
@@ -670,7 +671,7 @@ function CategoriesSection() {
         await deleteCategory.mutateAsync({ id: node.id });
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to delete category');
+      toast.error(err.message || 'Failed to delete category');
     }
   };
 
@@ -679,7 +680,7 @@ function CategoriesSection() {
 
     try {
       if (deleteAction === 'reassign' && !reassignTargetId) {
-        alert('Please select a category to reassign transactions to.');
+        toast.error('Please select a category to reassign transactions to.');
         return;
       }
 
@@ -691,7 +692,7 @@ function CategoriesSection() {
 
       setDeleteModal(null);
     } catch (err: any) {
-      alert(err.message || 'Failed to delete category');
+      toast.error(err.message || 'Failed to delete category');
     }
   };
 
@@ -724,7 +725,7 @@ function CategoriesSection() {
       });
       handleCancelEdit();
     } catch (err: any) {
-      alert(err.message || 'Failed to update category');
+      toast.error(err.message || 'Failed to update category');
     }
   };
 
@@ -972,9 +973,9 @@ function CategoriesSection() {
             onClick={async () => {
               try {
                 const result = await restoreDefaults.mutateAsync();
-                alert(result.message);
+                toast.success(result.message);
               } catch (err: any) {
-                alert(err.message || 'Failed to restore defaults');
+                toast.error(err.message || 'Failed to restore defaults');
               }
             }}
             disabled={restoreDefaults.isPending}

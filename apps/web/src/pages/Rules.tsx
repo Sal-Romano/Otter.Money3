@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useRules, useDeleteRule, useUpdateRule, useApplyRule } from '../hooks/useRules';
 import RuleModal from '../components/RuleModal';
 import { CategoryIcon } from '../components/CategoryIcon';
@@ -48,7 +49,7 @@ export default function Rules() {
       await deleteRule.mutateAsync(ruleId);
     } catch (err) {
       console.error('Failed to delete rule:', err);
-      alert('Failed to delete rule. Please try again.');
+      toast.error('Failed to delete rule. Please try again.');
     }
   };
 
@@ -60,7 +61,7 @@ export default function Rules() {
       });
     } catch (err) {
       console.error('Failed to toggle rule:', err);
-      alert('Failed to toggle rule. Please try again.');
+      toast.error('Failed to toggle rule. Please try again.');
     }
   };
 
@@ -74,10 +75,10 @@ export default function Rules() {
     setApplyingRuleId(ruleId);
     try {
       const result = await applyRule.mutateAsync({ ruleId, force: !force });
-      alert(result.message);
+      toast.success(result.message);
     } catch (err: any) {
       console.error('Failed to apply rule:', err);
-      alert(err.message || 'Failed to apply rule. Please try again.');
+      toast.error(err.message || 'Failed to apply rule. Please try again.');
     } finally {
       setApplyingRuleId(null);
     }
