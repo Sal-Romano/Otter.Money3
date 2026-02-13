@@ -427,22 +427,32 @@ export interface ImportPreviewMatchedTransaction {
   date: string;
   amount: number;
   description: string;
+  merchantName?: string | null;
+  categoryId?: string | null;
+  notes?: string | null;
   isManual: boolean;
+}
+
+export interface ImportFieldChange {
+  field: string;
+  from: string;
+  to: string;
 }
 
 export interface ImportPreviewRow {
   rowNumber: number;
-  action: 'create' | 'update' | 'skip';
+  action: 'create' | 'update' | 'skip' | 'unchanged';
   parsed: ImportPreviewParsed;
   matchedTransaction?: ImportPreviewMatchedTransaction | null;
   matchConfidence?: number | null;
   skipReason?: string | null;
+  changes?: ImportFieldChange[];
   warnings: string[];
 }
 
 export interface ImportPreviewResponse {
   totalRows: number;
-  summary: { create: number; update: number; skip: number };
+  summary: { create: number; update: number; skip: number; unchanged: number };
   rows: ImportPreviewRow[];
 }
 

@@ -21,7 +21,7 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
   const [defaultAccountId, setDefaultAccountId] = useState('');
   const [previewData, setPreviewData] = useState<ImportPreviewResponse | null>(null);
   const [skippedRows, setSkippedRows] = useState<Set<number>>(new Set());
-  const [activeTab, setActiveTab] = useState<'create' | 'update' | 'skip'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'update' | 'unchanged' | 'skip'>('create');
   const [importResult, setImportResult] = useState<{
     created: number;
     updated: number;
@@ -116,13 +116,15 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
       });
       setPreviewData(result);
 
-      // Default active tab to whichever has the most rows
-      if (result.summary.update > result.summary.create && result.summary.update > result.summary.skip) {
+      // Default active tab to whichever has the most actionable rows
+      if (result.summary.create > 0) {
+        setActiveTab('create');
+      } else if (result.summary.update > 0) {
         setActiveTab('update');
-      } else if (result.summary.skip > result.summary.create) {
+      } else if (result.summary.skip > 0) {
         setActiveTab('skip');
       } else {
-        setActiveTab('create');
+        setActiveTab('unchanged');
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to preview import');
@@ -163,20 +165,23 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
 
   // Count rows by action (accounting for user toggles)
   const getAdjustedCounts = () => {
-    if (!previewData) return { create: 0, update: 0, skip: 0 };
+    if (!previewData) return { create: 0, update: 0, skip: 0, unchanged: 0 };
     let create = 0;
     let update = 0;
     let skip = 0;
+    let unchanged = 0;
     for (const row of previewData.rows) {
       if (row.action === 'skip' || skippedRows.has(row.rowNumber)) {
         skip++;
       } else if (row.action === 'create') {
         create++;
+      } else if (row.action === 'unchanged') {
+        unchanged++;
       } else {
         update++;
       }
     }
-    return { create, update, skip };
+    return { create, update, skip, unchanged };
   };
 
   const formatAmount = (amount: number) => {
@@ -283,19 +288,19 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
           {step === 'account' && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Select a default account for transactions. If your CSV has an "Account" column, matched accounts will be used automatically.
+                Select a default account for transactions that don't specify one. If your CSV has an "Account" column, matched accounts will be used automatically — rows with unrecognized accounts will be skipped.
               </p>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Default Account
+                  Default Account <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
                 <select
                   value={defaultAccountId}
                   onChange={(e) => setDefaultAccountId(e.target.value)}
                   className="input"
                 >
-                  <option value="">— Select account —</option>
+                  <option value="">— None (skip unmatched rows) —</option>
                   {accounts?.map((account) => (
                     <option key={account.id} value={account.id}>
                       {account.name}
@@ -304,7 +309,7 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Used for rows without an "Account" column or unrecognized account names.
+                  Rows without a recognized account will use this default, or be skipped if none is set.
                 </p>
               </div>
 
@@ -314,7 +319,7 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
                 </button>
                 <button
                   onClick={handlePreview}
-                  disabled={!defaultAccountId || importPreview.isPending}
+                  disabled={importPreview.isPending}
                   className="btn-primary flex-1"
                 >
                   {importPreview.isPending ? 'Analyzing...' : 'Preview Import'}
@@ -334,46 +339,48 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
           {step === 'preview' && previewData && (
             <div className="space-y-4">
               {/* Summary cards */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-center">
-                  <div className="text-2xl font-bold text-green-700">{getAdjustedCounts().create}</div>
-                  <div className="text-xs text-green-600 font-medium">New</div>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="rounded-lg bg-green-50 border border-green-200 p-2.5 text-center">
+                  <div className="text-xl font-bold text-green-700">{getAdjustedCounts().create}</div>
+                  <div className="text-[11px] text-green-600 font-medium">New</div>
                 </div>
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-center">
-                  <div className="text-2xl font-bold text-blue-700">{getAdjustedCounts().update}</div>
-                  <div className="text-xs text-blue-600 font-medium">Updates</div>
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-2.5 text-center">
+                  <div className="text-xl font-bold text-blue-700">{getAdjustedCounts().update}</div>
+                  <div className="text-[11px] text-blue-600 font-medium">Updates</div>
                 </div>
-                <div className="rounded-lg bg-orange-50 border border-orange-200 p-3 text-center">
-                  <div className="text-2xl font-bold text-orange-700">{getAdjustedCounts().skip}</div>
-                  <div className="text-xs text-orange-600 font-medium">Skipped</div>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 p-2.5 text-center">
+                  <div className="text-xl font-bold text-gray-500">{getAdjustedCounts().unchanged}</div>
+                  <div className="text-[11px] text-gray-500 font-medium">Unchanged</div>
+                </div>
+                <div className="rounded-lg bg-orange-50 border border-orange-200 p-2.5 text-center">
+                  <div className="text-xl font-bold text-orange-700">{getAdjustedCounts().skip}</div>
+                  <div className="text-[11px] text-orange-600 font-medium">Skipped</div>
                 </div>
               </div>
 
               {/* Tabs */}
               <div className="flex border-b border-gray-200">
-                {(['create', 'update', 'skip'] as const).map((tab) => {
-                  const count =
-                    tab === 'create'
-                      ? previewData.summary.create
-                      : tab === 'update'
-                      ? previewData.summary.update
-                      : previewData.summary.skip;
+                {(['create', 'update', 'unchanged', 'skip'] as const).map((tab) => {
+                  const counts = getAdjustedCounts();
+                  const count = counts[tab];
+                  const tabConfig = {
+                    create: { label: 'New', activeClass: 'border-green-500 text-green-700' },
+                    update: { label: 'Updates', activeClass: 'border-blue-500 text-blue-700' },
+                    unchanged: { label: 'Unchanged', activeClass: 'border-gray-400 text-gray-600' },
+                    skip: { label: 'Skipped', activeClass: 'border-orange-500 text-orange-700' },
+                  }[tab];
                   return (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
                       className={clsx(
-                        'flex-1 py-2 text-sm font-medium border-b-2 transition-colors',
+                        'flex-1 py-2 text-xs font-medium border-b-2 transition-colors',
                         activeTab === tab
-                          ? tab === 'create'
-                            ? 'border-green-500 text-green-700'
-                            : tab === 'update'
-                            ? 'border-blue-500 text-blue-700'
-                            : 'border-orange-500 text-orange-700'
+                          ? tabConfig.activeClass
                           : 'border-transparent text-gray-500 hover:text-gray-700'
                       )}
                     >
-                      {tab === 'create' ? 'New' : tab === 'update' ? 'Updates' : 'Skipped'} ({count})
+                      {tabConfig.label} ({count})
                     </button>
                   );
                 })}
@@ -382,10 +389,7 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
               {/* Row list */}
               <div className="max-h-[40vh] overflow-y-auto space-y-1">
                 {previewData.rows
-                  .filter((row) => {
-                    if (activeTab === 'skip') return row.action === 'skip';
-                    return row.action === activeTab;
-                  })
+                  .filter((row) => row.action === activeTab)
                   .map((row) => (
                     <PreviewRowItem
                       key={row.rowNumber}
@@ -396,12 +400,9 @@ export function ImportWizardModal({ isOpen, onClose }: ImportWizardModalProps) {
                     />
                   ))}
 
-                {previewData.rows.filter((r) => {
-                  if (activeTab === 'skip') return r.action === 'skip';
-                  return r.action === activeTab;
-                }).length === 0 && (
+                {previewData.rows.filter((r) => r.action === activeTab).length === 0 && (
                   <p className="text-center text-sm text-gray-400 py-8">
-                    No {activeTab === 'create' ? 'new' : activeTab === 'update' ? 'updated' : 'skipped'} transactions
+                    No {activeTab === 'create' ? 'new' : activeTab === 'update' ? 'updated' : activeTab === 'unchanged' ? 'unchanged' : 'skipped'} transactions
                   </p>
                 )}
               </div>
@@ -512,6 +513,8 @@ function PreviewRowItem({
   formatAmount: (amount: number) => string;
 }) {
   const isSkipped = row.action === 'skip';
+  const isUnchanged = row.action === 'unchanged';
+  const canToggle = !isSkipped && !isUnchanged;
 
   return (
     <div
@@ -519,6 +522,8 @@ function PreviewRowItem({
         'rounded-lg border p-3 text-sm',
         isSkipped
           ? 'border-orange-200 bg-orange-50/50'
+          : isUnchanged
+          ? 'border-gray-200 bg-gray-50/50'
           : isUserSkipped
           ? 'border-gray-200 bg-gray-50 opacity-50'
           : row.action === 'create'
@@ -529,7 +534,7 @@ function PreviewRowItem({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-900 truncate">
+            <span className={clsx('font-medium truncate', isUnchanged ? 'text-gray-500' : 'text-gray-900')}>
               {row.parsed.description || '(no description)'}
             </span>
             {row.matchConfidence !== null && row.matchConfidence !== undefined && row.matchConfidence < 1.0 && (
@@ -552,11 +557,30 @@ function PreviewRowItem({
           {isSkipped && row.skipReason && (
             <p className="text-xs text-orange-600 mt-1">{row.skipReason}</p>
           )}
+          {isUnchanged && row.matchedTransaction && (
+            <p className="text-xs text-gray-400 mt-1">
+              Already exists — no changes needed
+              {!row.matchedTransaction.isManual && ' (synced)'}
+            </p>
+          )}
           {row.action === 'update' && row.matchedTransaction && (
             <p className="text-xs text-blue-600 mt-1">
               Matches: "{row.matchedTransaction.description}"
               {!row.matchedTransaction.isManual && ' (synced)'}
             </p>
+          )}
+          {/* Show field-level changes for updates */}
+          {row.action === 'update' && row.changes && row.changes.length > 0 && (
+            <div className="mt-1.5 space-y-0.5">
+              {row.changes.map((change, i) => (
+                <div key={i} className="text-xs flex items-center gap-1">
+                  <span className="font-medium text-blue-700">{change.field}:</span>
+                  <span className="text-gray-400 line-through truncate max-w-[120px]">{change.from}</span>
+                  <span className="text-gray-400">&rarr;</span>
+                  <span className="text-blue-700 truncate max-w-[120px]">{change.to}</span>
+                </div>
+              ))}
+            </div>
           )}
           {row.warnings.length > 0 && (
             <div className="mt-1 space-y-0.5">
@@ -571,12 +595,16 @@ function PreviewRowItem({
           <span
             className={clsx(
               'font-medium',
-              row.parsed.amount < 0 ? 'text-gray-700' : 'text-green-600'
+              isUnchanged
+                ? 'text-gray-400'
+                : row.parsed.amount < 0
+                ? 'text-gray-700'
+                : 'text-green-600'
             )}
           >
             {formatAmount(row.parsed.amount)}
           </span>
-          {!isSkipped && (
+          {canToggle && (
             <button
               onClick={onToggleSkip}
               className={clsx(

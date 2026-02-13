@@ -8,7 +8,7 @@ import { prisma } from '../utils/prisma';
 import { parseCSV, normalizeColumnName, parseDate, parseAmount, resolveAmountSign } from '../utils/csvParser';
 import { getCategoryIdByName } from '../utils/categoryMapping';
 import { applyRulesToTransaction } from './ruleEngine';
-import type { ImportPreviewRow, ImportPreviewResponse, ImportExecuteResponse } from '@otter-money/shared';
+import type { ImportPreviewRow, ImportPreviewResponse, ImportExecuteResponse, ImportFieldChange } from '@otter-money/shared';
 
 interface ParsedImportRow {
   rowNumber: number;
@@ -362,16 +362,36 @@ export async function processImport(
     }
 
     // Resolve account
-    let accountId = accountMap.get(row.accountName.toLowerCase()) || accountMap.get('__default__');
-    if (!accountId) {
-      previewRows.push({
-        rowNumber: row.rowNumber,
-        action: 'skip',
-        parsed: { date: row.date.toISOString().split('T')[0], amount: row.amount, description: row.description, accountId: '', accountName: row.accountName, notes: row.notes },
-        skipReason: `Account not found: '${row.accountName}'`,
-        warnings: [],
-      });
-      continue;
+    let accountId: string | undefined;
+    if (row.accountName) {
+      accountId = accountMap.get(row.accountName.toLowerCase());
+      if (!accountId) {
+        // Account name in CSV doesn't match any household account — try default
+        accountId = accountMap.get('__default__');
+        if (!accountId) {
+          previewRows.push({
+            rowNumber: row.rowNumber,
+            action: 'skip',
+            parsed: { date: row.date.toISOString().split('T')[0], amount: row.amount, description: row.description, accountId: '', accountName: row.accountName, notes: row.notes },
+            skipReason: `Account not found: '${row.accountName}'`,
+            warnings: [],
+          });
+          continue;
+        }
+      }
+    } else {
+      // No account column value — use default
+      accountId = accountMap.get('__default__');
+      if (!accountId) {
+        previewRows.push({
+          rowNumber: row.rowNumber,
+          action: 'skip',
+          parsed: { date: row.date.toISOString().split('T')[0], amount: row.amount, description: row.description, accountId: '', accountName: '', notes: row.notes },
+          skipReason: 'No account specified and no default account selected',
+          warnings: [],
+        });
+        continue;
+      }
     }
 
     const accountName = accountNameById.get(accountId) || row.accountName;
@@ -449,12 +469,34 @@ export async function processImport(
       continue;
     }
 
+    // Compute actual changes for update rows
+    let changes: ImportFieldChange[] = [];
+
     if (matchedTx) {
       matchedTxIds.add(matchedTx.id);
 
-      // Add warnings for what will change on update
-      if (categoryId && matchedTx.categoryId && categoryId !== matchedTx.categoryId) {
-        warnings.push(`Category will be updated`);
+      // Check each field for actual differences
+      if (row.description && row.description !== matchedTx.description) {
+        changes.push({ field: 'Description', from: matchedTx.description, to: row.description });
+      }
+      if (row.merchant && row.merchant !== (matchedTx.merchantName || '')) {
+        changes.push({ field: 'Merchant', from: matchedTx.merchantName || '(none)', to: row.merchant });
+      }
+      if (categoryId && categoryId !== matchedTx.categoryId) {
+        // Resolve names for display
+        const fromName = matchedTx.categoryId ? '(existing)' : '(none)';
+        changes.push({ field: 'Category', from: fromName, to: row.categoryName || '(none)' });
+      }
+      if (row.notes && row.notes !== (matchedTx.notes || '')) {
+        changes.push({ field: 'Notes', from: matchedTx.notes || '(none)', to: row.notes });
+      }
+      if (Math.abs(row.amount - matchedTx.amount) >= 0.01) {
+        changes.push({ field: 'Amount', from: String(matchedTx.amount), to: String(row.amount) });
+      }
+
+      // If nothing actually changed, mark as unchanged instead of update
+      if (changes.length === 0) {
+        action = 'unchanged';
       }
     }
 
@@ -478,17 +520,21 @@ export async function processImport(
             date: matchedTx.date.toISOString().split('T')[0],
             amount: matchedTx.amount,
             description: matchedTx.description,
+            merchantName: matchedTx.merchantName,
+            categoryId: matchedTx.categoryId,
+            notes: matchedTx.notes,
             isManual: matchedTx.isManual,
           }
         : null,
       matchConfidence,
+      changes: changes.length > 0 ? changes : undefined,
       skipReason: null,
       warnings,
     });
   }
 
   // 5. Build summary
-  const summary = { create: 0, update: 0, skip: 0 };
+  const summary = { create: 0, update: 0, skip: 0, unchanged: 0 };
   for (const row of previewRows) {
     summary[row.action]++;
   }
@@ -517,14 +563,14 @@ export async function processImport(
     }
   }
 
-  // Process creates and updates inside a transaction
+  // Process creates and updates inside a transaction (skip unchanged rows too)
   const actionRows = previewRows.filter(
-    (r) => r.action !== 'skip' && !skipSet.has(r.rowNumber)
+    (r) => (r.action === 'create' || r.action === 'update') && !skipSet.has(r.rowNumber)
   );
 
   // Process user-skipped rows
   for (const row of previewRows) {
-    if (row.action !== 'skip' && skipSet.has(row.rowNumber)) {
+    if ((row.action === 'create' || row.action === 'update') && skipSet.has(row.rowNumber)) {
       skipped++;
       skippedDetails.push({ rowNumber: row.rowNumber, reason: 'Skipped by user' });
     }
