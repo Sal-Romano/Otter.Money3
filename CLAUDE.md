@@ -93,42 +93,53 @@ Household (shared)
 
 Check `docs/SPRINTS.md` for current progress. Update the checkboxes as you complete tasks.
 
-## Project Structure (Target)
+## Project Structure
 
 ```
 otter-money/
-├── CLAUDE.md            # This file
-├── README.md            # Project readme
-├── docs/                # Documentation
-├── package.json         # Root package.json (monorepo)
+├── CLAUDE.md                    # This file
+├── README.md                    # Project readme
+├── docs/                        # Documentation
+├── package.json                 # Root package.json (monorepo)
+├── .dockerignore                # Docker build context exclusions
+├── .env.production              # Production env vars (gitignored)
+├── .env.production.example      # Template for production env
+├── docker-compose.yml           # Dev stack (Redis only)
+├── docker-compose.prod.yml      # Production stack (web, api, redis, optional postgres)
 ├── apps/
-│   ├── web/             # React frontend (Vite)
+│   ├── web/                     # React frontend (Vite)
 │   │   ├── src/
 │   │   │   ├── components/
 │   │   │   ├── pages/
 │   │   │   ├── hooks/
 │   │   │   ├── stores/
 │   │   │   └── utils/
+│   │   ├── Dockerfile           # Multi-stage: Vite build → nginx
+│   │   ├── nginx.conf           # Production nginx config
 │   │   ├── index.html
 │   │   └── package.json
-│   └── api/             # Node.js backend
+│   └── api/                     # Node.js backend
 │       ├── src/
 │       │   ├── routes/
 │       │   ├── services/
 │       │   ├── middleware/
 │       │   └── utils/
+│       ├── Dockerfile           # Multi-stage: build → Node.js Alpine runner
 │       └── package.json
 ├── packages/
-│   └── shared/          # Shared types and utilities
+│   └── shared/                  # Shared types and utilities
 │       └── package.json
 ├── prisma/
-│   └── schema.prisma    # Database schema
+│   ├── schema.prisma            # Database schema
+│   ├── seed.ts                  # Default categories seeder
+│   └── migrations/              # Prisma migrations
+├── scripts/
+│   └── docker-entrypoint.sh     # API startup: wait DB → migrate → seed → start
 ├── src/
-│   └── public/          # Existing assets (logos, icons)
+│   └── public/                  # Existing assets (logos, icons)
 │       └── images/
-├── ios/                 # Capacitor iOS project
-├── android/             # Capacitor Android project
-└── docker-compose.yml   # Local dev environment
+├── ios/                         # Capacitor iOS project (not yet initialized)
+└── android/                     # Capacitor Android project (not yet initialized)
 ```
 
 ## Existing Assets
@@ -170,6 +181,25 @@ npm run ios:dev         # iOS with live reload
 npm run android:dev     # Android with live reload
 npx cap sync            # Sync web build to native
 npx cap open ios        # Open Xcode
+```
+
+### Docker (Production)
+
+```bash
+# Deploy with external Postgres (default):
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Deploy with containerized Postgres:
+docker compose -f docker-compose.prod.yml --profile db up -d --build
+
+# View logs:
+docker compose -f docker-compose.prod.yml logs -f
+
+# Rebuild single service (e.g. after code change):
+docker compose -f docker-compose.prod.yml up -d --build api
+
+# Stop production:
+docker compose -f docker-compose.prod.yml down
 ```
 
 ## Key Decisions Made

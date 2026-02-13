@@ -1,0 +1,46 @@
+node_modules
+.git
+.gitignore
+*.md
+!README.md
+
+# Build outputs (rebuilt in Docker)
+apps/web/dist
+apps/api/dist
+packages/shared/dist
+
+# Environment files
+.env
+.env.*
+!.env.production.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
+
+# Native apps
+ios
+android
+
+# Logs
+logs
+*.log
+
+# Docker
+docker-compose*.yml
+
+# Misc
+coverage
+.nyc_output
+tmp
+temp
+plan.md
+docs
+*.tsbuildinfo

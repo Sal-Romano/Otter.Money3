@@ -617,20 +617,87 @@ npx cap open android     # Open in Android Studio
 ```
 localhost:3001  →  React dev server (Vite)
 localhost:4000  →  API server
-localhost:5433  →  PostgreSQL
-localhost:6379  →  Redis
+localhost:5433  →  PostgreSQL (native)
+localhost:6379  →  Redis (Docker via docker-compose.yml)
 ```
 
-### Production
-```
-app.otter.money  →  Nginx  →  React (static files)
-                          →  API (Node.js)
-                          →  PostgreSQL (managed)
-                          →  Redis (managed)
+### Production (Docker)
 
-App Store       →  iOS app (Capacitor)
-Play Store      →  Android app (Capacitor)
 ```
+Cloudflare Tunnel (app.otter.money)
+    ↓ port 3450
+┌─────────────────────────────────────────────────────────┐
+│  Docker Compose (docker-compose.prod.yml)               │
+│                                                         │
+│  ┌─────────────────┐                                    │
+│  │   otter-web     │  nginx :80 → host :3450            │
+│  │   (React SPA)   │  - Serves static files             │
+│  │                 │  - Proxies /api/* to API            │
+│  └────────┬────────┘                                    │
+│           │                                             │
+│  ┌────────▼────────┐                                    │
+│  │   otter-api     │  Express :4000 (internal only)     │
+│  │   (Node.js)     │  - Auto-runs migrations on start   │
+│  │                 │  - Optional seed (SEED_DB=true)     │
+│  └───┬─────────┬───┘                                    │
+│      │         │                                        │
+│  ┌───▼───┐ ┌───▼──────────────┐                         │
+│  │ Redis │ │ PostgreSQL       │  Optional (--profile db)│
+│  │ :6379 │ │ :5432 → host:5434│  OR external via        │
+│  └───────┘ └──────────────────┘  host.docker.internal   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Deployment Modes
+
+**External Postgres (default)** — point `DATABASE_URL` at your own Postgres:
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+**Containerized Postgres** — full self-contained stack:
+```bash
+# Set DATABASE_URL=postgresql://otter:changeme@postgres:5432/otter_money?schema=public
+docker compose -f docker-compose.prod.yml --profile db up -d --build
+```
+
+**Rebuild a single service:**
+```bash
+docker compose -f docker-compose.prod.yml up -d --build api
+```
+
+### Docker Files
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.prod.yml` | Production stack (web, api, redis, optional postgres) |
+| `docker-compose.yml` | Dev stack (redis only) |
+| `apps/api/Dockerfile` | Multi-stage: build API + shared → Node.js Alpine runner |
+| `apps/web/Dockerfile` | Multi-stage: build React SPA → nginx Alpine |
+| `apps/web/nginx.conf` | Nginx config: gzip, security headers, API proxy, SPA routing |
+| `scripts/docker-entrypoint.sh` | API entrypoint: wait for DB → migrate → seed → start |
+| `.env.production` | Production environment variables (gitignored) |
+| `.env.production.example` | Template for production env |
+| `.dockerignore` | Excludes node_modules, .git, dist, etc. from build context |
+
+### API Container Startup Flow
+
+1. Wait for database to be reachable (retries up to 30 times)
+2. Run `prisma migrate deploy` (applies pending migrations)
+3. If `SEED_DB=true`, run `prisma db seed` (default categories)
+4. Start Express server on port 4000
+
+### Nginx Configuration
+
+- Serves React SPA static files from `/usr/share/nginx/html`
+- Proxies `/api/*` to the API container on the Docker network
+- Gzip compression for text/js/css/json
+- Security headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
+- 1-year cache for static assets (js, css, images, fonts)
+- `client_max_body_size 10m` for CSV imports
+- Proxy timeouts: 30s connect, 120s read/send (for long operations)
+- SPA fallback: all non-file routes serve `index.html`
 
 ---
 

@@ -385,28 +385,37 @@ Development is organized into sprints, each delivering a working increment of th
 ---
 
 ## Sprint 14: Production Deployment
-**Status:** ⚪ Not Started
+**Status:** 🟡 In Progress
 **Goal:** Live production deployment
 
 ### Tasks
-- [ ] Set up production infrastructure
-- [ ] Configure production database
-- [ ] Set up Redis for production
-- [ ] Configure production Plaid keys
-- [ ] Set up monitoring (Sentry, logs)
-- [ ] Configure SSL certificates
-- [ ] Set up CI/CD pipeline
-- [ ] Configure backups
-- [ ] Deploy to production
-- [ ] Smoke testing in production
+- [x] Create `.dockerignore` for optimized build context
+- [x] Create production Docker Compose (`docker-compose.prod.yml`)
+- [x] Build multi-stage API Dockerfile (Node.js Alpine, auto-migrations)
+- [x] Build multi-stage Web Dockerfile (Vite build → nginx Alpine)
+- [x] Configure nginx (API proxy, gzip, security headers, SPA routing)
+- [x] Create API entrypoint script (DB wait, migrate, seed, start)
+- [x] Set up production env config (`.env.production` + `.env.production.example`)
+- [x] Support two deployment modes: external Postgres + containerized Postgres
+- [x] Fix Prisma binary targets for Alpine Linux (openssl-3.0.x)
+- [x] Fix Docker bridge network (daemon.json config for WSL2)
+- [x] Test full containerized stack (build, migrate, seed, health check)
+- [x] Test with external Postgres and real data
+- [x] Deploy to production — app.otter.money live via Cloudflare tunnel
+- [x] Configure production Plaid keys (production access)
+- [x] Configure AWS SES for transactional email
+- [ ] Generate strong JWT secret for production (`openssl rand -base64 32`)
+- [ ] Set up monitoring (Sentry, structured logging)
+- [ ] Set up CI/CD pipeline (build + deploy on push)
+- [ ] Configure database backups
 - [ ] Submit iOS app to App Store
 - [ ] Submit Android app to Play Store
 
 ### Deliverables
-- Web app live at app.otter.money
-- iOS app in App Store
-- Android app in Play Store
-- Monitoring and alerting active
+- [x] Web app live at app.otter.money (via Cloudflare tunnel)
+- [ ] iOS app in App Store
+- [ ] Android app in Play Store
+- [ ] Monitoring and alerting active
 
 ---
 

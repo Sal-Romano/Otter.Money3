@@ -27,11 +27,8 @@ FROM nginx:alpine AS runner
 # Copy custom nginx config
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built files
+# Copy built files (Vite already includes public/ assets in dist/)
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
-
-# Copy public assets (logos, etc)
-COPY src/public /usr/share/nginx/html
 
 EXPOSE 80
 

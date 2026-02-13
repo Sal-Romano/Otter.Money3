@@ -1,38 +1,45 @@
-version: '3.8'
-
-# Production deployment
-# PostgreSQL should be a managed service (RDS, Supabase, Neon, etc.)
-# Set DATABASE_URL in environment
+# Production deployment for Otter Money
+#
+# External Postgres (default - your setup):
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Containerized Postgres (fresh deploy):
+#   Update DATABASE_URL in .env.production to use postgres:5432
+#   docker compose -f docker-compose.prod.yml --profile db up -d --build
+#
+# Logs:
+#   docker compose -f docker-compose.prod.yml logs -f
+#
+# Rebuild single service:
+#   docker compose -f docker-compose.prod.yml up -d --build api
 
 services:
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    container_name: otter-web
+    container_name: otter-web-prod
     ports:
-      - "80:80"
+      - "3450:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - otter-net
 
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: otter-api
-    ports:
-      - "4000:4000"
+    container_name: otter-api-prod
+    env_file:
+      - .env.production
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - DATABASE_URL=${DATABASE_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN:-https://app.otter.money}
-      - REDIS_URL=redis://redis:6379
-      - PLAID_CLIENT_ID=${PLAID_CLIENT_ID}
-      - PLAID_SECRET=${PLAID_SECRET}
-      - PLAID_ENV=${PLAID_ENV:-production}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       redis:
         condition: service_healthy
@@ -42,11 +49,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    networks:
+      - otter-net
 
   redis:
     image: redis:7-alpine
     container_name: otter-redis-prod
+    command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
     healthcheck:
@@ -55,6 +65,36 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - otter-net
+
+  # Optional containerized Postgres — start with: --profile db
+  # When using this, set DATABASE_URL in .env.production to:
+  #   postgresql://otter:changeme@postgres:5432/otter_money?schema=public
+  postgres:
+    image: postgres:16-alpine
+    container_name: otter-postgres-prod
+    profiles:
+      - db
+    env_file:
+      - .env.production
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - otter-net
+
+networks:
+  otter-net:
+    driver: bridge
 
 volumes:
   redis-data:
+  postgres-data:
