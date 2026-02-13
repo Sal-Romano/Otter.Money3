@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../utils/api';
 import type { TransactionWithDetails, AccountType } from '@otter-money/shared';
 import { accountKeys } from './useAccounts';
@@ -51,6 +51,8 @@ export const transactionKeys = {
   all: ['transactions'] as const,
   lists: () => [...transactionKeys.all, 'list'] as const,
   list: (filters: TransactionFilters) => [...transactionKeys.lists(), filters] as const,
+  infinite: (filters: TransactionFilters) => [...transactionKeys.all, 'infinite', filters] as const,
+  uncategorizedCount: () => [...transactionKeys.all, 'uncategorized-count'] as const,
   details: () => [...transactionKeys.all, 'detail'] as const,
   detail: (id: string) => [...transactionKeys.details(), id] as const,
 };
@@ -89,6 +91,66 @@ export function useTransactions(filters: TransactionFilters = {}) {
   });
 }
 
+function buildParams(filters: TransactionFilters, offset?: number): URLSearchParams {
+  const params: Record<string, string> = {};
+  if (filters.accountId) params.accountId = filters.accountId;
+  if (filters.categoryId) params.categoryId = filters.categoryId;
+  if (filters.ownerId) params.ownerId = filters.ownerId;
+  if (filters.startDate) params.startDate = filters.startDate;
+  if (filters.endDate) params.endDate = filters.endDate;
+  if (filters.search) params.search = filters.search;
+  if (filters.limit) params.limit = String(filters.limit);
+  if (offset !== undefined) params.offset = String(offset);
+  if (filters.includeAdjustments) params.includeAdjustments = 'true';
+  return new URLSearchParams(params);
+}
+
+function getAuthHeader(): Record<string, string> {
+  const stored = localStorage.getItem('otter-money-auth');
+  const token = stored ? JSON.parse(stored).state.accessToken : '';
+  return { Authorization: `Bearer ${token}` };
+}
+
+export function useInfiniteTransactions(filters: Omit<TransactionFilters, 'offset'> & { limit: number }) {
+  return useInfiniteQuery({
+    queryKey: transactionKeys.infinite(filters),
+    queryFn: async ({ pageParam = 0 }) => {
+      const params = buildParams({ ...filters, limit: filters.limit }, pageParam);
+      const response = await fetch(`/api/transactions?${params}`, {
+        headers: getAuthHeader(),
+      });
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      const result = await response.json();
+      return {
+        transactions: result.data as TransactionWithOwner[],
+        total: result.meta?.total || 0,
+        limit: result.meta?.limit || filters.limit,
+        offset: result.meta?.offset || 0,
+      };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.limit;
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
+  });
+}
+
+export function useUncategorizedCount() {
+  return useQuery({
+    queryKey: transactionKeys.uncategorizedCount(),
+    queryFn: async () => {
+      const params = new URLSearchParams({ categoryId: 'uncategorized', limit: '1' });
+      const response = await fetch(`/api/transactions?${params}`, {
+        headers: getAuthHeader(),
+      });
+      if (!response.ok) throw new Error('Failed to fetch uncategorized count');
+      const result = await response.json();
+      return result.meta?.total || 0;
+    },
+  });
+}
+
 export function useTransaction(id: string) {
   return useQuery({
     queryKey: transactionKeys.detail(id),
@@ -104,7 +166,7 @@ export function useCreateTransaction() {
     mutationFn: (data: CreateTransactionRequest) =>
       api.post<TransactionWithOwner>('/transactions', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
       queryClient.invalidateQueries({ queryKey: accountKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
@@ -118,7 +180,7 @@ export function useUpdateTransaction() {
     mutationFn: ({ id, ...data }: UpdateTransactionRequest & { id: string }) =>
       api.patch<TransactionWithOwner>(`/transactions/${id}`, data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
       queryClient.setQueryData(transactionKeys.detail(data.id), data);
       queryClient.invalidateQueries({ queryKey: accountKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
@@ -132,7 +194,7 @@ export function useDeleteTransaction() {
   return useMutation({
     mutationFn: (id: string) => api.delete<{ message: string }>(`/transactions/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
       queryClient.invalidateQueries({ queryKey: accountKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
@@ -146,7 +208,7 @@ export function useBulkCategorize() {
     mutationFn: (data: { transactionIds: string[]; categoryId: string | null }) =>
       api.post<{ message: string; count: number }>('/transactions/bulk-categorize', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: transactionKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all });
     },
   });
 }

@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useTransactions, TransactionWithOwner } from '../hooks/useTransactions';
+import { useInfiniteTransactions, useUncategorizedCount, TransactionWithOwner } from '../hooks/useTransactions';
 import { useAccounts } from '../hooks/useAccounts';
 import { useCategories } from '../hooks/useCategories';
 import { useHouseholdMembers } from '../hooks/useHousehold';
@@ -10,6 +10,8 @@ import { CategoryIcon } from '../components/CategoryIcon';
 import { useAuthStore } from '../stores/auth';
 
 type Transaction = TransactionWithOwner;
+
+const PAGE_SIZE = 100;
 
 export default function Transactions() {
   // Filters
@@ -26,19 +28,49 @@ export default function Transactions() {
   const [isExporting, setIsExporting] = useState(false);
 
   // Data hooks
-  const { data: transactionsData, isLoading, error } = useTransactions({
+  const {
+    data: infiniteData,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteTransactions({
     search: search || undefined,
     accountId: accountFilter || undefined,
     categoryId: categoryFilter || undefined,
     ownerId: ownerFilter || undefined,
-    limit: 100,
+    limit: PAGE_SIZE,
   });
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
   const { data: members } = useHouseholdMembers();
+  const { data: uncategorizedCount } = useUncategorizedCount();
 
-  const transactions = transactionsData?.transactions || [];
-  const total = transactionsData?.total || 0;
+  const transactions = useMemo(
+    () => infiniteData?.pages.flatMap((p) => p.transactions) || [],
+    [infiniteData]
+  );
+  const total = infiniteData?.pages[0]?.total || 0;
+
+  // Infinite scroll - observe a sentinel element
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Group transactions by date
   const groupedTransactions = useMemo(() => {
@@ -151,7 +183,13 @@ export default function Transactions() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-            <p className="text-sm text-gray-500">{total} transactions</p>
+            <p className="text-sm text-gray-500">
+              {uncategorizedCount ? (
+                <span className="text-amber-600">{uncategorizedCount} uncategorized</span>
+              ) : (
+                <>{total} transactions</>
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -354,6 +392,21 @@ export default function Transactions() {
                 </div>
               </div>
             ))}
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} />
+
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-4">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-primary" />
+              </div>
+            )}
+
+            {!hasNextPage && transactions.length > 0 && (
+              <p className="text-center text-xs text-gray-400 pb-2">
+                All {total} transactions loaded
+              </p>
+            )}
           </div>
         )}
       </div>
