@@ -118,6 +118,26 @@ export const DEFAULT_CATEGORIES_HIERARCHICAL: Record<'EXPENSE' | 'INCOME' | 'TRA
         { name: 'Reimbursable', icon: 'receipt-text' },
       ],
     },
+    {
+      name: 'Money Movement',
+      icon: 'arrow-left-right',
+      color: '#6B7280',
+      children: [
+        { name: 'CC Payment', icon: 'wallet' },
+        { name: 'Account Transfer', icon: 'arrow-right-left' },
+      ],
+    },
+    {
+      name: 'Investments',
+      icon: 'trending-up',
+      color: '#8B5CF6',
+      children: [
+        { name: 'Dividends', icon: 'pie-chart' },
+        { name: 'Interest', icon: 'percent' },
+        { name: 'Bitcoin', icon: 'bitcoin' },
+        { name: 'Stocks', icon: 'line-chart' },
+      ],
+    },
   ],
   TRANSFER: [
     {
@@ -146,6 +166,15 @@ export const DEFAULT_CATEGORIES_HIERARCHICAL: Record<'EXPENSE' | 'INCOME' | 'TRA
         { name: 'Stocks', icon: 'trending-up' },
         { name: 'Crypto', icon: 'bitcoin' },
         { name: 'Dividends', icon: 'pie-chart' },
+      ],
+    },
+    {
+      name: 'Money Movement',
+      icon: 'arrow-left-right',
+      color: '#6B7280',
+      children: [
+        { name: 'CC Payment', icon: 'wallet' },
+        { name: 'Account Transfer', icon: 'arrow-right-left' },
       ],
     },
     {

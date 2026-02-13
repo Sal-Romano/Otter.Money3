@@ -112,7 +112,7 @@ export function CategoryPicker({
       <div key={node.id}>
         <button
           type="button"
-          onClick={() => handleSelect(node.id)}
+          onClick={hasChildren ? (e) => toggleExpand(node.id, e) : () => handleSelect(node.id)}
           className={clsx(
             'w-full flex items-center gap-3 px-4 py-3 text-left transition-colors',
             'hover:bg-gray-50 active:bg-gray-100',
@@ -120,19 +120,15 @@ export function CategoryPicker({
           )}
           style={{ paddingLeft: `${16 + indentPx}px` }}
         >
-          {/* Expand/collapse button for parents */}
+          {/* Expand/collapse indicator for parents */}
           {hasChildren ? (
-            <button
-              type="button"
-              onClick={(e) => toggleExpand(node.id, e)}
-              className="p-1 -ml-2 rounded hover:bg-gray-200 text-gray-400"
-            >
+            <span className="p-1 -ml-2 text-gray-400">
               {isExpanded ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
                 <ChevronRight className="h-4 w-4" />
               )}
-            </button>
+            </span>
           ) : (
             <span className="w-6" /> // Spacer for alignment
           )}
