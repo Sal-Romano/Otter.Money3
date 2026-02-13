@@ -61,7 +61,11 @@ export const DEFAULT_CATEGORIES_HIERARCHICAL: Record<'EXPENSE' | 'INCOME' | 'TRA
         { name: 'Clothing', icon: 'shirt' },
         { name: 'Entertainment', icon: 'tv' },
         { name: 'Fees', icon: 'badge-dollar-sign' },
-        { name: 'Food', icon: 'utensils' },
+        { name: 'Food & Drink', icon: 'utensils', children: [
+          { name: 'Fast Food', icon: 'hamburger' },
+          { name: 'Dining', icon: 'utensils-crossed' },
+          { name: 'Beverages', icon: 'coffee' },
+        ] },
         { name: 'Gas', icon: 'fuel' },
         { name: 'Gifts', icon: 'gift' },
         { name: 'Groceries', icon: 'shopping-cart' },
@@ -91,6 +95,17 @@ export const DEFAULT_CATEGORIES_HIERARCHICAL: Record<'EXPENSE' | 'INCOME' | 'TRA
       ],
     },
     {
+      name: 'Date Night',
+      icon: 'heart',
+      color: '#EF4444',
+      children: [
+        { name: 'Bars & Nightlife', icon: 'wine' },
+        { name: 'Dining Out', icon: 'utensils-crossed' },
+        { name: 'Movies', icon: 'clapperboard' },
+        { name: 'Activities', icon: 'sparkles' },
+      ],
+    },
+    {
       name: 'Business Expenses',
       icon: 'briefcase',
       color: '#10B981',
@@ -100,6 +115,7 @@ export const DEFAULT_CATEGORIES_HIERARCHICAL: Record<'EXPENSE' | 'INCOME' | 'TRA
         { name: 'Phone', icon: 'smartphone' },
         { name: 'Fees', icon: 'receipt' },
         { name: 'Labor', icon: 'users' },
+        { name: 'Reimbursable', icon: 'receipt-text' },
       ],
     },
   ],
