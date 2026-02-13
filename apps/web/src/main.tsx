@@ -23,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Toaster
           position="top-center"
           richColors
+          mobileOffset={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
           toastOptions={{
             className: 'font-sans',
           }}
