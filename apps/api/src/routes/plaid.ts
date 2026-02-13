@@ -417,11 +417,33 @@ router.post('/sync-transactions', async (req, res, next) => {
       data: { cursor },
     });
 
-    // Update lastSyncedAt for all accounts
-    await prisma.account.updateMany({
-      where: { plaidItemId: itemId },
-      data: { lastSyncedAt: new Date() },
-    });
+    // Refresh account balances from Plaid
+    try {
+      const balancesResponse = await plaidClient.accountsGet({
+        access_token: plaidItem.accessToken,
+      });
+
+      for (const plaidAccount of balancesResponse.data.accounts) {
+        await prisma.account.updateMany({
+          where: {
+            plaidItemId: itemId,
+            plaidAccountId: plaidAccount.account_id,
+          },
+          data: {
+            currentBalance: plaidAccount.balances.current || 0,
+            availableBalance: plaidAccount.balances.available || undefined,
+            lastSyncedAt: new Date(),
+          },
+        });
+      }
+    } catch (balanceError) {
+      console.error(`Failed to refresh balances for item ${itemId}:`, balanceError);
+      // Still update lastSyncedAt even if balance refresh fails
+      await prisma.account.updateMany({
+        where: { plaidItemId: itemId },
+        data: { lastSyncedAt: new Date() },
+      });
+    }
 
     res.json({
       data: {
@@ -787,11 +809,33 @@ async function syncPlaidTransactions(plaidItem: {
       data: { cursor },
     });
 
-    // Update lastSyncedAt for all accounts
-    await prisma.account.updateMany({
-      where: { plaidItemId: plaidItem.itemId },
-      data: { lastSyncedAt: new Date() },
-    });
+    // Refresh account balances from Plaid
+    try {
+      const balancesResponse = await plaidClient.accountsGet({
+        access_token: plaidItem.accessToken,
+      });
+
+      for (const plaidAccount of balancesResponse.data.accounts) {
+        await prisma.account.updateMany({
+          where: {
+            plaidItemId: plaidItem.itemId,
+            plaidAccountId: plaidAccount.account_id,
+          },
+          data: {
+            currentBalance: plaidAccount.balances.current || 0,
+            availableBalance: plaidAccount.balances.available || undefined,
+            lastSyncedAt: new Date(),
+          },
+        });
+      }
+    } catch (balanceError) {
+      console.error(`Failed to refresh balances for item ${plaidItem.itemId}:`, balanceError);
+      // Still update lastSyncedAt even if balance refresh fails
+      await prisma.account.updateMany({
+        where: { plaidItemId: plaidItem.itemId },
+        data: { lastSyncedAt: new Date() },
+      });
+    }
 
     console.log(
       `Synced ${totalAdded} added, ${totalModified} modified, ${totalRemoved} removed transactions for item ${plaidItem.itemId}` +
