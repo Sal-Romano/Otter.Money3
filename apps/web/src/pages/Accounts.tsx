@@ -417,47 +417,40 @@ function AccountCard({ account, onClick }: AccountCardProps) {
       onClick={onClick}
       className="card w-full text-left transition-shadow hover:shadow-md flex items-center gap-3"
     >
-      <AccountIcon type={account.type} />
+      <AccountIcon type={account.type} size="lg" />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <span className="font-medium text-gray-900 truncate">{account.name}</span>
-          {account.connectionType !== 'MANUAL' && (
-            <span className="flex-shrink-0 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-              <LinkIcon className="mr-0.5 h-3 w-3" />
-              Connected
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-gray-500">
-            {account.owner ? account.owner.name : 'Joint'}
+          <span
+            className={`font-semibold flex-shrink-0 ${
+              isLiability && account.currentBalance < 0
+                ? 'text-error'
+                : 'text-gray-900'
+            }`}
+          >
+            {formatCurrency(account.currentBalance)}
           </span>
-          {account.owner && (
-            <OwnerBadge name={account.owner.name} />
-          )}
+        </div>
+        <div className="flex items-center justify-between mt-0.5">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            {account.owner && <OwnerBadge name={account.owner.name} />}
+            <span>{account.owner ? account.owner.name : 'Joint'}</span>
+            {account.connectionType !== 'MANUAL' && (
+              <>
+                <span className="text-gray-300">·</span>
+                <LinkIcon className="h-3 w-3 text-green-500" />
+              </>
+            )}
+          </div>
+          {account.availableBalance !== null &&
+            account.availableBalance !== account.currentBalance && (
+              <span className="text-xs text-gray-500 flex-shrink-0">
+                {formatCurrency(account.availableBalance)} avail
+              </span>
+            )}
         </div>
       </div>
-
-      <div className="text-right">
-        <span
-          className={`font-semibold ${
-            isLiability && account.currentBalance < 0
-              ? 'text-error'
-              : 'text-gray-900'
-          }`}
-        >
-          {formatCurrency(account.currentBalance)}
-        </span>
-        {account.availableBalance !== null &&
-          account.availableBalance !== account.currentBalance && (
-            <p className="text-xs text-gray-500">
-              Available: {formatCurrency(account.availableBalance)}
-            </p>
-          )}
-      </div>
-
-      <ChevronRightIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
     </button>
   );
 }
@@ -501,14 +494,6 @@ function WalletIcon({ className }: { className: string }) {
         strokeLinejoin="round"
         d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
       />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className }: { className: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
     </svg>
   );
 }
