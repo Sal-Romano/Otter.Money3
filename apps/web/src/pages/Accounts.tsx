@@ -5,7 +5,6 @@ import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { useVehicles } from '../hooks/useVehicles';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
-import { VehicleModal } from '../components/VehicleModal';
 import { usePlaidLinkConnect, usePlaidItems, usePlaidSync } from '../hooks/usePlaidLink';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { AccountWithOwner, AccountType, VehicleWithDetails } from '@otter-money/shared';
@@ -46,7 +45,6 @@ export default function Accounts() {
   const { data: vehicles } = useVehicles();
   const [selectedAccount, setSelectedAccount] = useState<AccountWithOwner | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [showPlaidSuccess, setShowPlaidSuccess] = useState(false);
   const [plaidSuccessMessage, setPlaidSuccessMessage] = useState('');
   const [showBankConnections, setShowBankConnections] = useState(false);
@@ -152,21 +150,21 @@ export default function Accounts() {
 
       {/* Vehicle Mileage Reminder */}
       {staleVehicles.length > 0 && (
-        <div className="mb-4 rounded-lg bg-purple-50 p-4 border border-purple-200">
+        <div className="mb-4 rounded-lg bg-primary-50 p-4 border border-primary-200">
           <div className="flex items-start gap-3">
             <span className="text-xl flex-shrink-0">🚗</span>
             <div className="flex-1">
-              <p className="text-sm font-medium text-purple-900">
+              <p className="text-sm font-medium text-primary-900">
                 Time to update your vehicle mileage!
               </p>
-              <p className="text-xs text-purple-700 mt-0.5">
+              <p className="text-xs text-primary-700 mt-0.5">
                 {staleVehicles.length === 1
                   ? `${staleVehicles[0].account.name} hasn't been valued in over 30 days.`
                   : `${staleVehicles.length} vehicles haven't been valued in over 30 days.`}
               </p>
               <button
                 onClick={() => navigate(`/vehicles/${staleVehicles[0].id}`)}
-                className="text-xs font-medium text-purple-700 hover:text-purple-900 mt-1 underline"
+                className="text-xs font-medium text-primary-700 hover:text-primary-900 mt-1 underline"
               >
                 Update Now
               </button>
@@ -201,14 +199,6 @@ export default function Accounts() {
             Add Manually
           </button>
         </div>
-
-        {/* Add Vehicle Link */}
-        <button
-          onClick={() => setIsVehicleModalOpen(true)}
-          className="mt-3 text-sm text-primary hover:text-primary-600 font-medium flex items-center gap-1"
-        >
-          <span>🚗</span> Track a Vehicle
-        </button>
 
         {/* Manage Connections Link */}
         {accounts && accounts.some(a => a.connectionType === 'PLAID') && (
@@ -298,12 +288,6 @@ export default function Accounts() {
         account={selectedAccount}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-      />
-
-      {/* Vehicle Modal */}
-      <VehicleModal
-        isOpen={isVehicleModalOpen}
-        onClose={() => setIsVehicleModalOpen(false)}
       />
 
       {/* Bank Connections Modal */}
@@ -500,7 +484,7 @@ function AccountCard({ account, vehicle, onClick }: AccountCardProps) {
       className="card w-full text-left transition-shadow hover:shadow-md flex items-center gap-3"
     >
       {vehicle ? (
-        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-lg flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center text-lg flex-shrink-0">
           🚗
         </div>
       ) : (

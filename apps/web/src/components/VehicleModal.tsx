@@ -150,7 +150,7 @@ export function VehicleModal({ isOpen, onClose }: VehicleModalProps) {
                 type="button"
                 onClick={handleDecodeVin}
                 disabled={vin.length !== 17 || decodeVin.isPending}
-                className="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                className="btn-primary whitespace-nowrap"
               >
                 {decodeVin.isPending ? 'Looking up...' : 'Look Up'}
               </button>
@@ -333,14 +333,14 @@ export function VehicleModal({ isOpen, onClose }: VehicleModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="btn-secondary flex-1"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createVehicle.isPending}
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary flex-1"
             >
               {createVehicle.isPending ? 'Adding Vehicle...' : 'Add Vehicle'}
             </button>

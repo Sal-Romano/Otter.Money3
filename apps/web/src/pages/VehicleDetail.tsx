@@ -56,7 +56,7 @@ export default function VehicleDetail() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
           <p className="text-gray-500">Loading vehicle...</p>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function VehicleDetail() {
           <p className="text-gray-500 mb-4">Vehicle not found</p>
           <button
             onClick={() => navigate('/accounts')}
-            className="text-purple-600 hover:text-purple-700"
+            className="text-primary hover:text-primary-600"
           >
             Back to Accounts
           </button>
@@ -110,7 +110,7 @@ export default function VehicleDetail() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto pb-8">
+    <div className="px-4 py-6 pb-8">
       {/* Back button */}
       <button
         onClick={() => navigate('/accounts')}
@@ -123,7 +123,7 @@ export default function VehicleDetail() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-2xl">
+          <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center text-lg">
             🚗
           </div>
           <div>
@@ -133,7 +133,7 @@ export default function VehicleDetail() {
             <p className="text-sm text-gray-500">
               {vehicle.vin}
               {vehicle.owner && (
-                <span className="ml-2 text-purple-600">
+                <span className="ml-2 text-primary">
                   {vehicle.owner.name}
                 </span>
               )}
@@ -143,7 +143,7 @@ export default function VehicleDetail() {
       </div>
 
       {/* Current Value Card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
+      <div className="card mb-4 p-6">
         <p className="text-sm text-gray-500 mb-1">Current Market Value</p>
         <p className="text-3xl font-bold text-gray-900">
           {formatCurrency(currentValue)}
@@ -153,7 +153,7 @@ export default function VehicleDetail() {
           <div className="mt-2 flex items-center gap-3">
             <span
               className={`text-sm font-medium ${
-                totalDepreciation >= 0 ? 'text-green-600' : 'text-red-600'
+                totalDepreciation >= 0 ? 'text-success' : 'text-error'
               }`}
             >
               {totalDepreciation >= 0 ? '+' : ''}
@@ -184,13 +184,13 @@ export default function VehicleDetail() {
       <div className="flex gap-3 mb-6">
         <button
           onClick={() => setShowMileageModal(true)}
-          className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium text-sm"
+          className="btn-primary flex-1"
         >
           Update Mileage
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="px-4 py-3 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors text-sm"
+          className="btn-secondary"
         >
           Remove
         </button>
@@ -198,21 +198,21 @@ export default function VehicleDetail() {
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-          <p className="text-sm text-red-800 mb-3">
+        <div className="rounded-lg bg-error-50 p-4 mb-6">
+          <p className="text-sm text-error-600 mb-3">
             Remove this vehicle? This will delete the account and all valuation history.
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => setShowDeleteConfirm(false)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 text-sm hover:bg-white"
+              className="btn-secondary flex-1"
             >
               Cancel
             </button>
             <button
               onClick={handleDelete}
               disabled={deleteVehicle.isPending}
-              className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50"
+              className="btn flex-1 bg-error text-white hover:bg-error-600"
             >
               {deleteVehicle.isPending ? 'Removing...' : 'Remove Vehicle'}
             </button>
@@ -222,7 +222,7 @@ export default function VehicleDetail() {
 
       {/* Depreciation Chart */}
       {chartData.length > 1 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
+        <div className="card p-6 mb-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Value Over Time
           </h2>
@@ -284,7 +284,7 @@ export default function VehicleDetail() {
       )}
 
       {/* Vehicle Info */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-4">
+      <div className="card p-6 mb-4">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Vehicle Details
         </h2>
@@ -315,18 +315,18 @@ export default function VehicleDetail() {
 
       {/* Valuation History */}
       {valuations && valuations.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Valuation History
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-0 divide-y divide-gray-100">
             {[...valuations].reverse().map((v, i, arr) => {
               const prev = arr[i + 1];
               const change = prev ? v.marketValue - prev.marketValue : null;
               return (
                 <div
                   key={v.id}
-                  className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                  className="flex items-center justify-between py-3"
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">
@@ -343,7 +343,7 @@ export default function VehicleDetail() {
                     {change != null && (
                       <p
                         className={`text-xs ${
-                          change >= 0 ? 'text-green-600' : 'text-red-600'
+                          change >= 0 ? 'text-success' : 'text-error'
                         }`}
                       >
                         {change >= 0 ? '+' : ''}

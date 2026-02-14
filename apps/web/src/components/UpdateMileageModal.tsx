@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useUpdateMileage } from '../hooks/useVehicles';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { VehicleWithDetails } from '@otter-money/shared';
 
 interface UpdateMileageModalProps {
@@ -26,6 +27,8 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
     change: number;
     changePercent: number | null;
   } | null>(null);
+
+  useBodyScrollLock(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,38 +62,53 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl flex items-center justify-center w-12 h-12 rounded-full bg-purple-100">
-              🚗
-            </span>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Update Mileage</h2>
-              <p className="text-sm text-gray-600">
-                {vehicle.year} {vehicle.make} {vehicle.model}
-              </p>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center text-lg">
+                🚗
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Update Mileage</h2>
+                <p className="text-sm text-gray-500">
+                  {vehicle.year} {vehicle.make} {vehicle.model}
+                </p>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 text-gray-400 hover:text-gray-600"
+              aria-label="Close"
+            >
+              <XIcon className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
         {!result ? (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Current mileage display */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            {/* Current stats */}
+            <div className="rounded-lg bg-gray-50 p-4 space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Current Mileage</span>
-                <span className="font-semibold text-gray-900">
+                <span className="text-sm text-gray-500">Current Mileage</span>
+                <span className="font-medium text-gray-900">
                   {vehicle.mileage.toLocaleString()} mi
                 </span>
               </div>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-sm text-gray-600">Current Value</span>
-                <span className="font-semibold text-gray-900">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500">Current Value</span>
+                <span className="font-medium text-gray-900">
                   {formatCurrency(vehicle.account.currentBalance)}
                 </span>
               </div>
@@ -99,14 +117,14 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
             {/* New mileage input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                New Mileage <span className="text-red-500">*</span>
+                New Mileage
               </label>
               <div className="relative">
                 <input
                   type="number"
                   value={mileage}
                   onChange={(e) => setMileage(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-3 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="input text-lg pr-14"
                   placeholder={String(vehicle.mileage + 1000)}
                   min={vehicle.mileage}
                   required
@@ -126,14 +144,14 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={updateMileage.isPending}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary flex-1"
               >
                 {updateMileage.isPending
                   ? 'Getting Value...'
@@ -145,14 +163,14 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
           /* Result view */
           <div className="p-6 space-y-4">
             <div className="text-center py-4">
-              <p className="text-sm text-gray-600 mb-2">Updated Market Value</p>
+              <p className="text-sm text-gray-500 mb-2">Updated Market Value</p>
               <p className="text-3xl font-bold text-gray-900">
                 {formatCurrency(result.newValue)}
               </p>
               {result.change !== 0 && (
                 <p
                   className={`text-sm font-medium mt-1 ${
-                    result.change > 0 ? 'text-green-600' : 'text-red-600'
+                    result.change > 0 ? 'text-success' : 'text-error'
                   }`}
                 >
                   {result.change > 0 ? '+' : ''}
@@ -167,21 +185,21 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
               )}
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+            <div className="rounded-lg bg-gray-50 p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Previous Value</span>
+                <span className="text-gray-500">Previous Value</span>
                 <span className="text-gray-900">
                   {formatCurrency(result.previousValue)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">New Value</span>
+                <span className="text-gray-500">New Value</span>
                 <span className="font-medium text-gray-900">
                   {formatCurrency(result.newValue)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">New Mileage</span>
+                <span className="text-gray-500">New Mileage</span>
                 <span className="text-gray-900">
                   {parseInt(mileage).toLocaleString()} mi
                 </span>
@@ -190,7 +208,7 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
 
             <button
               onClick={onClose}
-              className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="btn-primary w-full"
             >
               Done
             </button>
@@ -198,5 +216,23 @@ export function UpdateMileageModal({ vehicle, onClose }: UpdateMileageModalProps
         )}
       </div>
     </div>
+  );
+}
+
+function XIcon({ className }: { className: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 18L18 6M6 6l12 12"
+      />
+    </svg>
   );
 }
