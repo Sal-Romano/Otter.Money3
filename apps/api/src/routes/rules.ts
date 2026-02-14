@@ -447,20 +447,44 @@ function buildWhereClause(conditions: RuleConditions, householdId: string): any 
     });
   }
 
-  // Amount matching
+  // Amount matching (uses absolute values so users think in dollar amounts)
   if (conditions.amountMin !== undefined || conditions.amountMax !== undefined) {
-    const amountCriteria: any = {};
-    if (conditions.amountMin !== undefined) {
-      amountCriteria.gte = conditions.amountMin;
+    const absMin = conditions.amountMin !== undefined ? Math.abs(conditions.amountMin) : undefined;
+    const absMax = conditions.amountMax !== undefined ? Math.abs(conditions.amountMax) : undefined;
+
+    // Match absolute value: |amount| >= min AND |amount| <= max
+    // For max: |amount| <= max means amount is between -max and +max
+    // For min: |amount| >= min means amount <= -min OR amount >= min
+    if (absMax !== undefined && absMin !== undefined) {
+      // Both min and max: amount in [-max, -min] OR [min, max]
+      criteriaList.push({
+        OR: [
+          { amount: { gte: -absMax, lte: -absMin } },
+          { amount: { gte: absMin, lte: absMax } },
+        ],
+      });
+    } else if (absMax !== undefined) {
+      // Only max: |amount| <= max means amount in [-max, max]
+      criteriaList.push({ amount: { gte: -absMax, lte: absMax } });
+    } else if (absMin !== undefined) {
+      // Only min: |amount| >= min means amount <= -min OR amount >= min
+      criteriaList.push({
+        OR: [
+          { amount: { lte: -absMin } },
+          { amount: { gte: absMin } },
+        ],
+      });
     }
-    if (conditions.amountMax !== undefined) {
-      amountCriteria.lte = conditions.amountMax;
-    }
-    criteriaList.push({ amount: amountCriteria });
   }
 
   if (conditions.amountExactly !== undefined) {
-    criteriaList.push({ amount: conditions.amountExactly });
+    const absExact = Math.abs(conditions.amountExactly);
+    criteriaList.push({
+      OR: [
+        { amount: absExact },
+        { amount: -absExact },
+      ],
+    });
   }
 
   // Account filtering

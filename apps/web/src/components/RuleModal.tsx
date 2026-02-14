@@ -254,14 +254,14 @@ export default function RuleModal({ rule, prefillData, onClose }: RuleModalProps
               {/* Amount Exactly */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount Exactly (for expenses, use negative)
+                  Amount Exactly
                 </label>
                 <input
                   type="number"
                   step="0.01"
                   value={amountExactly}
                   onChange={(e) => setAmountExactly(e.target.value)}
-                  placeholder="e.g., -4.99"
+                  placeholder="e.g., 4.99"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
@@ -277,7 +277,7 @@ export default function RuleModal({ rule, prefillData, onClose }: RuleModalProps
                     step="0.01"
                     value={amountMin}
                     onChange={(e) => setAmountMin(e.target.value)}
-                    placeholder="e.g., -100"
+                    placeholder="e.g., 10"
                     disabled={!!amountExactly}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
                   />
@@ -291,14 +291,14 @@ export default function RuleModal({ rule, prefillData, onClose }: RuleModalProps
                     step="0.01"
                     value={amountMax}
                     onChange={(e) => setAmountMax(e.target.value)}
-                    placeholder="e.g., -10"
+                    placeholder="e.g., 100"
                     disabled={!!amountExactly}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100"
                   />
                 </div>
               </div>
               <p className="text-xs text-gray-500 -mt-2 mb-4">
-                For expenses: -100 to -10 means between $10 and $100
+                Uses absolute dollar amounts (e.g., min 10 max 100 matches $10–$100)
               </p>
             </div>
 

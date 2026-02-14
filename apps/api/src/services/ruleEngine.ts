@@ -76,19 +76,19 @@ function matchesRule(
     );
   }
 
-  // Amount matching - range
-  const amount = Number(transaction.amount);
+  // Amount matching - range (uses absolute values so users think in dollar amounts)
+  const absAmount = Math.abs(Number(transaction.amount));
   if (conditions.amountMin !== undefined) {
-    checks.push(amount >= conditions.amountMin);
+    checks.push(absAmount >= Math.abs(conditions.amountMin));
   }
 
   if (conditions.amountMax !== undefined) {
-    checks.push(amount <= conditions.amountMax);
+    checks.push(absAmount <= Math.abs(conditions.amountMax));
   }
 
   // Amount matching - exactly
   if (conditions.amountExactly !== undefined) {
-    checks.push(amount === conditions.amountExactly);
+    checks.push(absAmount === Math.abs(conditions.amountExactly));
   }
 
   // Account filtering - specific accounts
