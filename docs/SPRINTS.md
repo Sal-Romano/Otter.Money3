@@ -419,6 +419,54 @@ Development is organized into sprints, each delivering a working increment of th
 
 ---
 
+## Sprint 10: Vehicle Value Tracker
+**Status:** 🟢 Complete
+**Goal:** Track depreciating vehicle assets with real market valuations
+
+### Tasks
+- [x] Add Vehicle and VehicleValuation models to Prisma schema
+- [x] Add vehicle types to shared package (types.ts, constants.ts)
+- [x] Create MarketCheck API service (price prediction)
+- [x] Create NHTSA VIN decoder service (free, unlimited)
+- [x] Build vehicle CRUD API routes (POST, GET, PATCH, DELETE)
+- [x] Build update-mileage endpoint (triggers MarketCheck valuation)
+- [x] Build valuation history endpoint (for charts)
+- [x] Build VIN decode endpoint (NHTSA, saves MarketCheck quota)
+- [x] Register vehicle router in API index
+- [x] Add MARKETCHECK_API_KEY to env configuration
+- [x] Create React Query hooks (useVehicles)
+- [x] Create VehicleModal component (add vehicle with VIN lookup)
+- [x] Create UpdateMileageModal component (enter mileage, get new value)
+- [x] Create VehicleDetail page (value card, depreciation chart, history)
+- [x] Add /vehicles/:id route to App.tsx
+- [x] Integrate vehicles into Accounts page (vehicle-specific account cards)
+- [x] Add "Track a Vehicle" button to Accounts page
+- [x] Add vehicle mileage reminder banner (>30 days since last valuation)
+- [x] Update API documentation (docs/API.md)
+- [x] Update sprint documentation (docs/SPRINTS.md)
+
+### External APIs
+- **MarketCheck Price API** — Vehicle market value predictions (500 req/month free tier)
+- **NHTSA vPIC API** — VIN decoding (free, unlimited, no API key)
+
+### Key Files
+- `prisma/schema.prisma` — Vehicle + VehicleValuation models
+- `apps/api/src/services/marketcheck.ts` — MarketCheck + NHTSA API client
+- `apps/api/src/routes/vehicles.ts` — Vehicle CRUD + valuation endpoints
+- `apps/web/src/hooks/useVehicles.ts` — React Query hooks
+- `apps/web/src/components/VehicleModal.tsx` — Add vehicle modal
+- `apps/web/src/components/UpdateMileageModal.tsx` — Mileage update modal
+- `apps/web/src/pages/VehicleDetail.tsx` — Vehicle detail with depreciation chart
+
+### Deliverables
+- [x] Users can add vehicles by VIN with auto-decode
+- [x] Vehicle value appears as ASSET account in net worth
+- [x] Monthly mileage update triggers fresh market valuation
+- [x] Depreciation chart shows value history over time
+- [x] Reminder banner prompts users to update vehicle mileage
+
+---
+
 ## Future Sprints (Backlog)
 
 ### Investment Deep Dive

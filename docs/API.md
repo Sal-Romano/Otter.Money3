@@ -1345,6 +1345,232 @@ Get goal summary for the dashboard widget.
 
 ---
 
+## Vehicle Endpoints
+
+All vehicle endpoints require authentication and household membership. Vehicles are tracked as ASSET accounts with market valuations powered by MarketCheck and VIN decoding via NHTSA.
+
+### POST /vehicles/decode-vin
+Decode a VIN using the free NHTSA vPIC API. Does not use MarketCheck quota.
+
+**Request:**
+```json
+{
+  "vin": "19XFL1H86NE021192"
+}
+```
+
+**Response (200):**
+```json
+{
+  "data": {
+    "year": 2022,
+    "make": "Honda",
+    "model": "Civic",
+    "trim": "Sport Touring",
+    "bodyClass": "Hatchback/Liftback/Notchback",
+    "driveType": "4x2",
+    "fuelType": "Gasoline",
+    "engineCylinders": 4,
+    "displacement": "1.5",
+    "transmission": "Continuously Variable Transmission (CVT)"
+  }
+}
+```
+
+---
+
+### GET /vehicles
+List all vehicles in the household.
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "veh123",
+      "householdId": "hh123",
+      "accountId": "acc456",
+      "vin": "19XFL1H86NE021192",
+      "year": 2022,
+      "make": "Honda",
+      "model": "Civic",
+      "trim": "Sport Touring",
+      "mileage": 60000,
+      "zipCode": "90210",
+      "purchasePrice": 28000,
+      "purchaseDate": "2022-06-15",
+      "lastValuationAt": "2026-02-14T19:00:00.000Z",
+      "account": {
+        "id": "acc456",
+        "name": "2022 Honda Civic",
+        "currentBalance": 23580,
+        "ownerId": "abc123"
+      },
+      "owner": { "id": "abc123", "name": "John Doe", "avatarUrl": null },
+      "latestValuation": {
+        "id": "val789",
+        "vehicleId": "veh123",
+        "date": "2026-02-14",
+        "mileageAtValuation": 60000,
+        "marketValue": 23580,
+        "msrp": 32851
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET /vehicles/:id
+Get a single vehicle with details.
+
+**Response (200):** Same shape as list item above.
+
+**Errors:**
+- `404` - Vehicle not found
+- `403` - Vehicle belongs to another household
+
+---
+
+### POST /vehicles
+Add a vehicle. Creates an ASSET account, a Vehicle record, and fetches an initial valuation from MarketCheck.
+
+**Request:**
+```json
+{
+  "vin": "19XFL1H86NE021192",
+  "year": 2022,
+  "make": "Honda",
+  "model": "Civic",
+  "trim": "Sport Touring",
+  "mileage": 60000,
+  "zipCode": "90210",
+  "purchasePrice": 28000,
+  "purchaseDate": "2022-06-15",
+  "ownerId": "abc123",
+  "name": "Our Civic"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| vin | string | Yes | 17-character VIN (no I, O, Q) |
+| year | number | Yes | Model year (1900-2100) |
+| make | string | Yes | Vehicle make |
+| model | string | Yes | Vehicle model |
+| trim | string | No | Trim level |
+| mileage | number | Yes | Current odometer reading |
+| zipCode | string | Yes | ZIP code for regional pricing |
+| purchasePrice | number | No | What you paid for the vehicle |
+| purchaseDate | string | No | Purchase date (YYYY-MM-DD) |
+| ownerId | string | No | Owner user ID (null = joint) |
+| name | string | No | Custom display name (defaults to "Year Make Model") |
+
+**Response (201):** Created vehicle with initial valuation.
+
+**Errors:**
+- `409` - A vehicle with this VIN already exists in the household
+
+---
+
+### PATCH /vehicles/:id
+Update vehicle info. Does not trigger a new valuation.
+
+**Request:**
+```json
+{
+  "trim": "EX-L",
+  "zipCode": "90211",
+  "ownerId": null,
+  "name": "Family Car"
+}
+```
+
+**Response (200):** Updated vehicle.
+
+---
+
+### DELETE /vehicles/:id
+Delete a vehicle, its account, all transactions, and valuation history.
+
+**Response (200):**
+```json
+{
+  "data": { "message": "Vehicle deleted" }
+}
+```
+
+---
+
+### POST /vehicles/:id/update-mileage
+Update mileage and trigger a fresh MarketCheck valuation. Creates a valuation snapshot and updates the account balance.
+
+**Request:**
+```json
+{
+  "mileage": 62000
+}
+```
+
+**Response (200):**
+```json
+{
+  "data": {
+    "id": "veh123",
+    "mileage": 62000,
+    "account": { "currentBalance": 23100 },
+    "latestValuation": {
+      "date": "2026-02-14",
+      "mileageAtValuation": 62000,
+      "marketValue": 23100,
+      "msrp": 32851
+    },
+    "previousValue": 23580,
+    "valueChange": -480,
+    "valueChangePercent": -2.03
+  }
+}
+```
+
+**Errors:**
+- `400` - New mileage cannot be less than current mileage
+- `503` - MarketCheck API unavailable
+
+---
+
+### GET /vehicles/:id/valuations
+Get valuation history for charts.
+
+**Query Parameters:**
+- `limit` - Max results (default: 48, max: 100)
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "val789",
+      "vehicleId": "veh123",
+      "date": "2026-01-14",
+      "mileageAtValuation": 58000,
+      "marketValue": 24100,
+      "msrp": 32851
+    },
+    {
+      "id": "val790",
+      "vehicleId": "veh123",
+      "date": "2026-02-14",
+      "mileageAtValuation": 60000,
+      "marketValue": 23580,
+      "msrp": 32851
+    }
+  ]
+}
+```
+
+---
+
 ## Upcoming Endpoints
 
 ### Sprint 10: SimpleFin Integration

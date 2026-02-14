@@ -177,6 +177,75 @@ export interface Goal {
 }
 
 // ============================================
+// VEHICLES
+// ============================================
+
+export interface Vehicle {
+  id: string;
+  householdId: string;
+  accountId: string;
+  vin: string;
+  year: number;
+  make: string;
+  model: string;
+  trim: string | null;
+  mileage: number;
+  zipCode: string;
+  purchasePrice: number | null;
+  purchaseDate: string | null;
+  lastValuationAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VehicleWithDetails extends Vehicle {
+  account: Pick<Account, 'id' | 'name' | 'currentBalance' | 'ownerId'>;
+  owner: Pick<User, 'id' | 'name' | 'avatarUrl'> | null;
+  latestValuation: VehicleValuation | null;
+}
+
+export interface VehicleValuation {
+  id: string;
+  vehicleId: string;
+  date: string;
+  mileageAtValuation: number;
+  marketValue: number;
+  msrp: number | null;
+  createdAt: string;
+}
+
+export interface CreateVehicleRequest {
+  vin: string;
+  year: number;
+  make: string;
+  model: string;
+  trim?: string;
+  mileage: number;
+  zipCode: string;
+  purchasePrice?: number;
+  purchaseDate?: string;
+  ownerId?: string | null;
+  name?: string;
+}
+
+export interface UpdateVehicleRequest {
+  trim?: string;
+  zipCode?: string;
+  ownerId?: string | null;
+  name?: string;
+}
+
+export interface UpdateMileageRequest {
+  mileage: number;
+}
+
+export interface UpdateMileageResponse extends VehicleWithDetails {
+  previousValue: number | null;
+  valueChange: number | null;
+  valueChangePercent: number | null;
+}
+
+// ============================================
 // RULES
 // ============================================
 

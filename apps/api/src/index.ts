@@ -17,6 +17,7 @@ import { healthRouter } from './routes/health';
 import plaidRouter from './routes/plaid';
 import { recurringRouter } from './routes/recurring';
 import { goalsRouter } from './routes/goals';
+import { vehiclesRouter } from './routes/vehicles';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -45,6 +46,7 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/plaid', plaidRouter);
 app.use('/api/recurring', recurringRouter);
 app.use('/api/goals', goalsRouter);
+app.use('/api/vehicles', vehiclesRouter);
 
 // Error handler
 app.use(errorHandler);

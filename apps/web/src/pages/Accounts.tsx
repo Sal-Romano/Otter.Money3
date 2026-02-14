@@ -1,11 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
+import { useVehicles } from '../hooks/useVehicles';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
+import { VehicleModal } from '../components/VehicleModal';
 import { usePlaidLinkConnect, usePlaidItems, usePlaidSync } from '../hooks/usePlaidLink';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import type { AccountWithOwner, AccountType } from '@otter-money/shared';
+import type { AccountWithOwner, AccountType, VehicleWithDetails } from '@otter-money/shared';
 
 // Group accounts by type
 function groupAccountsByType(accounts: AccountWithOwner[]) {
@@ -37,10 +40,13 @@ const typeOrder: AccountType[] = [
 ];
 
 export default function Accounts() {
+  const navigate = useNavigate();
   const { data: accounts, isLoading, error, refetch } = useAccounts();
   const { data: summary } = useAccountSummary();
+  const { data: vehicles } = useVehicles();
   const [selectedAccount, setSelectedAccount] = useState<AccountWithOwner | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
   const [showPlaidSuccess, setShowPlaidSuccess] = useState(false);
   const [plaidSuccessMessage, setPlaidSuccessMessage] = useState('');
   const [showBankConnections, setShowBankConnections] = useState(false);
@@ -70,12 +76,39 @@ export default function Accounts() {
     return groupAccountsByType(accounts);
   }, [accounts]);
 
+  // Build a lookup of accountId -> vehicle for vehicle-enhanced account cards
+  const vehiclesByAccountId = useMemo(() => {
+    const map = new Map<string, VehicleWithDetails>();
+    if (vehicles) {
+      for (const v of vehicles) {
+        map.set(v.accountId, v);
+      }
+    }
+    return map;
+  }, [vehicles]);
+
+  // Check if any vehicle needs a mileage update (>30 days since last valuation)
+  const staleVehicles = useMemo(() => {
+    if (!vehicles) return [];
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return vehicles.filter(
+      (v) => !v.lastValuationAt || new Date(v.lastValuationAt) < thirtyDaysAgo
+    );
+  }, [vehicles]);
+
   const handleAddAccount = () => {
     setSelectedAccount(null);
     setIsModalOpen(true);
   };
 
   const handleEditAccount = (account: AccountWithOwner) => {
+    // If this is a vehicle account, navigate to vehicle detail page
+    const vehicle = vehiclesByAccountId.get(account.id);
+    if (vehicle) {
+      navigate(`/vehicles/${vehicle.id}`);
+      return;
+    }
     setSelectedAccount(account);
     setIsModalOpen(true);
   };
@@ -117,6 +150,31 @@ export default function Accounts() {
         </div>
       )}
 
+      {/* Vehicle Mileage Reminder */}
+      {staleVehicles.length > 0 && (
+        <div className="mb-4 rounded-lg bg-purple-50 p-4 border border-purple-200">
+          <div className="flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">🚗</span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-purple-900">
+                Time to update your vehicle mileage!
+              </p>
+              <p className="text-xs text-purple-700 mt-0.5">
+                {staleVehicles.length === 1
+                  ? `${staleVehicles[0].account.name} hasn't been valued in over 30 days.`
+                  : `${staleVehicles.length} vehicles haven't been valued in over 30 days.`}
+              </p>
+              <button
+                onClick={() => navigate(`/vehicles/${staleVehicles[0].id}`)}
+                className="text-xs font-medium text-purple-700 hover:text-purple-900 mt-1 underline"
+              >
+                Update Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -143,6 +201,14 @@ export default function Accounts() {
             Add Manually
           </button>
         </div>
+
+        {/* Add Vehicle Link */}
+        <button
+          onClick={() => setIsVehicleModalOpen(true)}
+          className="mt-3 text-sm text-primary hover:text-primary-600 font-medium flex items-center gap-1"
+        >
+          <span>🚗</span> Track a Vehicle
+        </button>
 
         {/* Manage Connections Link */}
         {accounts && accounts.some(a => a.connectionType === 'PLAID') && (
@@ -216,6 +282,7 @@ export default function Accounts() {
                     <AccountCard
                       key={account.id}
                       account={account}
+                      vehicle={vehiclesByAccountId.get(account.id)}
                       onClick={() => handleEditAccount(account)}
                     />
                   ))}
@@ -231,6 +298,12 @@ export default function Accounts() {
         account={selectedAccount}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      {/* Vehicle Modal */}
+      <VehicleModal
+        isOpen={isVehicleModalOpen}
+        onClose={() => setIsVehicleModalOpen(false)}
       />
 
       {/* Bank Connections Modal */}
@@ -399,10 +472,11 @@ function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClo
 
 interface AccountCardProps {
   account: AccountWithOwner;
+  vehicle?: VehicleWithDetails;
   onClick: () => void;
 }
 
-function AccountCard({ account, onClick }: AccountCardProps) {
+function AccountCard({ account, vehicle, onClick }: AccountCardProps) {
   const isLiability = ['CREDIT', 'LOAN', 'MORTGAGE'].includes(account.type);
 
   const formatCurrency = (amount: number) => {
@@ -412,12 +486,26 @@ function AccountCard({ account, onClick }: AccountCardProps) {
     }).format(amount);
   };
 
+  // Calculate days since last valuation for vehicles
+  const daysSinceValuation = vehicle?.lastValuationAt
+    ? Math.floor(
+        (Date.now() - new Date(vehicle.lastValuationAt).getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : null;
+
   return (
     <button
       onClick={onClick}
       className="card w-full text-left transition-shadow hover:shadow-md flex items-center gap-3"
     >
-      <AccountIcon type={account.type} size="lg" />
+      {vehicle ? (
+        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-lg flex-shrink-0">
+          🚗
+        </div>
+      ) : (
+        <AccountIcon type={account.type} size="lg" />
+      )}
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
@@ -436,14 +524,34 @@ function AccountCard({ account, onClick }: AccountCardProps) {
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
             {account.owner && <OwnerBadge name={account.owner.name} />}
             <span>{account.owner ? account.owner.name : 'Joint'}</span>
-            {account.connectionType !== 'MANUAL' && (
+            {vehicle && (
+              <>
+                <span className="text-gray-300">·</span>
+                <span>{vehicle.mileage.toLocaleString()} mi</span>
+              </>
+            )}
+            {!vehicle && account.connectionType !== 'MANUAL' && (
               <>
                 <span className="text-gray-300">·</span>
                 <LinkIcon className="h-3 w-3 text-green-500" />
               </>
             )}
           </div>
-          {account.availableBalance !== null &&
+          {vehicle && daysSinceValuation !== null && (
+            <span
+              className={`text-xs flex-shrink-0 ${
+                daysSinceValuation > 30 ? 'text-amber-600' : 'text-gray-400'
+              }`}
+            >
+              {daysSinceValuation === 0
+                ? 'Valued today'
+                : daysSinceValuation === 1
+                ? 'Valued yesterday'
+                : `Valued ${daysSinceValuation}d ago`}
+            </span>
+          )}
+          {!vehicle &&
+            account.availableBalance !== null &&
             account.availableBalance !== account.currentBalance && (
               <span className="text-xs text-gray-500 flex-shrink-0">
                 {formatCurrency(account.availableBalance)} avail

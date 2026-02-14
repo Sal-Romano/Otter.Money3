@@ -28,6 +28,7 @@ model Household {
   simplefinConnection    SimplefinConnection?
   conversations          Conversation[]
   recurringTransactions  RecurringTransaction[]
+  vehicles               Vehicle[]
 }
 
 model User {
@@ -99,6 +100,7 @@ model Account {
 
   transactions          Transaction[]
   recurringTransactions RecurringTransaction[]
+  vehicle               Vehicle?
 
   @@index([householdId])
   @@index([ownerId])
@@ -353,6 +355,49 @@ model TransactionRecurringLink {
   createdAt              DateTime             @default(now())
 
   @@index([recurringTransactionId])
+}
+
+// ============================================
+// VEHICLES
+// ============================================
+
+model Vehicle {
+  id              String    @id @default(cuid())
+  householdId     String
+  household       Household @relation(fields: [householdId], references: [id])
+  accountId       String    @unique
+  account         Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  vin             String    @db.VarChar(17)
+  year            Int
+  make            String
+  model           String
+  trim            String?
+  mileage         Int
+  zipCode         String    @db.VarChar(10)
+  purchasePrice   Decimal?  @db.Decimal(19, 4)
+  purchaseDate    DateTime? @db.Date
+  lastValuationAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  valuations VehicleValuation[]
+
+  @@unique([householdId, vin])
+  @@index([householdId])
+}
+
+model VehicleValuation {
+  id                 String   @id @default(cuid())
+  vehicleId          String
+  vehicle            Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  date               DateTime @db.Date
+  mileageAtValuation Int
+  marketValue        Decimal  @db.Decimal(19, 4)
+  msrp               Decimal? @db.Decimal(19, 4)
+  rawResponse        Json?
+  createdAt          DateTime @default(now())
+
+  @@index([vehicleId, date])
 }
 
 enum RecurringFrequency {

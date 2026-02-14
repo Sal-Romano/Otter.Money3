@@ -27,7 +27,8 @@
 ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
 │    PostgreSQL    │ │      Redis       │ │  External APIs   │
 │   (Prisma ORM)   │ │  (Cache/Queue)   │ │ Plaid/SimpleFin  │
-└──────────────────┘ └──────────────────┘ │    Claude AI     │
+└──────────────────┘ └──────────────────┘ │ MarketCheck/NHTSA│
+                                          │    Claude AI     │
                                           └──────────────────┘
 ```
 
@@ -95,6 +96,8 @@
 | Plaid | Bank connections (per-user, multiple) |
 | SimpleFin Bridge | Bank connections (per-household, single) |
 | Anthropic Claude | Wally AI assistant |
+| MarketCheck | Vehicle market value predictions (500 req/month free) |
+| NHTSA vPIC | VIN decoding (free, unlimited, no API key) |
 | AWS SES | Transactional email (password reset, notifications) |
 
 ---
@@ -482,6 +485,18 @@ GET    /api/simplefin/status      # Get connection status
 POST   /api/simplefin/connect     # Set up SimpleFin connection
 POST   /api/simplefin/sync        # Manual sync
 DELETE /api/simplefin             # Remove SimpleFin connection
+```
+
+### Vehicle Value Tracking
+```
+POST   /api/vehicles/decode-vin         # Decode VIN (NHTSA, free)
+GET    /api/vehicles                    # List household vehicles
+GET    /api/vehicles/:id                # Vehicle detail
+POST   /api/vehicles                    # Add vehicle (creates ASSET account + initial valuation)
+PATCH  /api/vehicles/:id                # Update vehicle info
+DELETE /api/vehicles/:id                # Remove vehicle + account
+POST   /api/vehicles/:id/update-mileage # Update mileage + get fresh MarketCheck valuation
+GET    /api/vehicles/:id/valuations     # Valuation history (for depreciation chart)
 ```
 
 ### Transactions
