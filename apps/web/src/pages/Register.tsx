@@ -44,7 +44,7 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+    <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
       {/* Logo */}
       <div className="mb-8 text-center">
         <img
@@ -68,7 +68,9 @@ export default function Register() {
           </label>
           <input
             id="name"
+            name="name"
             type="text"
+            autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input mt-1"
@@ -83,7 +85,9 @@ export default function Register() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="input mt-1"
@@ -98,7 +102,9 @@ export default function Register() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="input mt-1"

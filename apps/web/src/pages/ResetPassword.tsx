@@ -52,7 +52,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+      <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
         <div className="mb-8 text-center">
           <img
             src="/images/otters_logo_vector_nobg.svg"
@@ -74,7 +74,7 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+      <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
         <div className="mb-8 text-center">
           <img
             src="/images/otters_logo_vector_nobg.svg"
@@ -95,7 +95,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+    <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
       {/* Logo */}
       <div className="mb-8 text-center">
         <img
@@ -119,7 +119,9 @@ export default function ResetPassword() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="input mt-1"
@@ -135,7 +137,9 @@ export default function ResetPassword() {
           </label>
           <input
             id="confirmPassword"
+            name="confirmPassword"
             type="password"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="input mt-1"

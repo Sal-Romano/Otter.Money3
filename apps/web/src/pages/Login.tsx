@@ -37,7 +37,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+    <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
       {/* Logo */}
       <div className="mb-8 text-center">
         <img
@@ -61,7 +61,9 @@ export default function Login() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="input mt-1"
@@ -81,7 +83,9 @@ export default function Login() {
           </div>
           <input
             id="password"
+            name="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="input mt-1"

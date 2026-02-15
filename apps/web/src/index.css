@@ -16,12 +16,6 @@
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
-
-  /* Prevent pull-to-refresh on mobile */
-  html,
-  body {
-    overscroll-behavior-y: contain;
-  }
 }
 
 /* Custom components */
@@ -73,5 +67,11 @@
 
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* Full viewport height that responds to keyboard (iOS dvh) */
+  .min-h-viewport {
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 }

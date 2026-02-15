@@ -35,7 +35,7 @@ export default function ForgotPassword() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+      <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
         <div className="mb-8 text-center">
           <img
             src="/images/otters_logo_vector_nobg.svg"
@@ -56,7 +56,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+    <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
       {/* Logo */}
       <div className="mb-8 text-center">
         <img
@@ -80,7 +80,9 @@ export default function ForgotPassword() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="input mt-1"

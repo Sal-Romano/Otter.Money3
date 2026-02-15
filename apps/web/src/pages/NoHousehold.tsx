@@ -80,7 +80,7 @@ export default function NoHousehold() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-primary-50 px-4">
+    <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
       <div className="mb-8 text-center">
         <img
           src="/images/otters_logo_vector_nobg.svg"

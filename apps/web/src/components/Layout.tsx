@@ -1,4 +1,5 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 
 const navItems = [
@@ -10,8 +11,52 @@ const navItems = [
 ];
 
 export default function Layout() {
+  const location = useLocation();
+  const scrollPositions = useRef<Map<string, number>>(new Map());
+  const prevPath = useRef(location.pathname);
+
+  // Track scroll position continuously for current path
+  useEffect(() => {
+    const handleScroll = () => {
+      scrollPositions.current.set(location.pathname, window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [location.pathname]);
+
+  // Restore scroll position on route change
+  useEffect(() => {
+    if (prevPath.current !== location.pathname) {
+      const saved = scrollPositions.current.get(location.pathname);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, saved ?? 0);
+      });
+      prevPath.current = location.pathname;
+    }
+  }, [location.pathname]);
+
+  const handleNavClick = (to: string, e: React.MouseEvent) => {
+    const isActive = to === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(to);
+
+    if (isActive) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Top fade overlay for mobile (under status bar / dynamic island) */}
+      <div
+        className="fixed top-0 left-0 right-0 z-40 pointer-events-none md:hidden"
+        style={{
+          height: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+          background: 'linear-gradient(to bottom, #F9FAFB 60%, transparent)',
+        }}
+      />
+
       {/* Desktop Left Sidebar */}
       <aside className="hidden md:flex md:w-[72px] md:fixed md:inset-y-0 md:left-0 md:z-50 md:flex-col md:items-center md:border-r md:border-gray-200 md:bg-white md:py-4">
         {/* Logo */}
@@ -83,6 +128,7 @@ export default function Layout() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              onClick={(e) => handleNavClick(item.to, e)}
               className={({ isActive }) =>
                 clsx(
                   'flex flex-1 flex-col items-center py-2 text-xs transition-colors',

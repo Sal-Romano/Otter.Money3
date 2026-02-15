@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const devServer = process.env.CAPACITOR_SERVER_URL;
 
 const config: CapacitorConfig = {
-  appId: 'money.otter.app',
+  appId: 'app.otter.money',
   appName: 'Otter Money',
   webDir: 'dist',
   server: devServer
