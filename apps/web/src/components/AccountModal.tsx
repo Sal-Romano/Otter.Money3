@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
 import { toast } from 'sonner';
 import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { useCreateAccount, useUpdateAccount, useUpdateBalance, useDeleteAccount } from '../hooks/useAccounts';
-import { useCreateVehicle, useDecodeVin } from '../hooks/useVehicles';
+import { useCreateVehicle, useDecodeVin, useVehicleMakes, useVehicleModels, useVehicleTrims } from '../hooks/useVehicles';
 import { AccountIcon, accountTypeLabels } from './AccountIcon';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { SearchableSelect } from './SearchableSelect';
 
 interface AccountModalProps {
   account?: AccountWithOwner | null;
@@ -51,6 +52,12 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
   const [vehicleName, setVehicleName] = useState('');
   const [vinDecoded, setVinDecoded] = useState(false);
 
+  // Ref to prevent cascading resets during VIN decode auto-fill
+  const vinDecodeInProgressRef = useRef(false);
+  // Refs for pending values that need to be set after data loads
+  const pendingModelRef = useRef<string | null>(null);
+  const pendingTrimRef = useRef<string | null>(null);
+
   // API hooks
   const { data: members } = useHouseholdMembers();
   const createAccount = useCreateAccount();
@@ -60,6 +67,19 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
   const createVehicle = useCreateVehicle();
   const decodeVin = useDecodeVin();
 
+  // Vehicle dropdown data
+  const yearNum = parseInt(vehicleYear, 10) || null;
+  const { data: makes, isLoading: makesLoading } = useVehicleMakes();
+  const { data: models, isLoading: modelsLoading } = useVehicleModels(
+    vehicleMake || null,
+    yearNum
+  );
+  const { data: trims, isLoading: trimsLoading } = useVehicleTrims(
+    vehicleMake || null,
+    vehicleModel || null,
+    yearNum
+  );
+
   const isLoading =
     createAccount.isPending ||
     updateAccount.isPending ||
@@ -68,6 +88,39 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
     createVehicle.isPending;
 
   useBodyScrollLock(isOpen);
+
+  // Apply pending model after models data loads (for VIN decode)
+  useEffect(() => {
+    if (pendingModelRef.current && models && models.length > 0) {
+      const pending = pendingModelRef.current;
+      pendingModelRef.current = null;
+      const match = models.find(
+        (m) => m.name.toLowerCase() === pending.toLowerCase()
+      );
+      if (match) {
+        setVehicleModel(match.name);
+      } else {
+        // Use decoded value even if not in dropdown list
+        setVehicleModel(pending);
+      }
+    }
+  }, [models]);
+
+  // Apply pending trim after trims data loads (for VIN decode)
+  useEffect(() => {
+    if (pendingTrimRef.current && trims && trims.length > 0) {
+      const pending = pendingTrimRef.current;
+      pendingTrimRef.current = null;
+      const match = trims.find(
+        (t) => t.name.toLowerCase() === pending.toLowerCase()
+      );
+      if (match) {
+        setVehicleTrim(match.name);
+      } else {
+        setVehicleTrim(pending);
+      }
+    }
+  }, [trims]);
 
   // Reset form when modal opens/closes or account changes
   useEffect(() => {
@@ -115,11 +168,41 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
 
     try {
       const result = await decodeVin.mutateAsync(vin);
+      vinDecodeInProgressRef.current = true;
+
+      // Set year first (this drives model/trim lookups)
       setVehicleYear(String(result.year));
-      setVehicleMake(result.make);
-      setVehicleModel(result.model);
-      setVehicleTrim(result.trim || '');
+
+      // Set make — find matching name from loaded makes list
+      if (makes) {
+        const makeMatch = makes.find(
+          (m) => m.name.toLowerCase() === result.make.toLowerCase()
+        );
+        setVehicleMake(makeMatch ? makeMatch.name : result.make);
+      } else {
+        setVehicleMake(result.make);
+      }
+
+      // Queue model and trim to be applied once data loads
+      if (result.model) {
+        pendingModelRef.current = result.model;
+        // Also set it immediately in case models are already loaded
+        setVehicleModel(result.model);
+      }
+      if (result.trim) {
+        pendingTrimRef.current = result.trim;
+        setVehicleTrim(result.trim);
+      } else {
+        setVehicleTrim('');
+      }
+
       setVinDecoded(true);
+
+      // Allow cascading resets again after a tick
+      setTimeout(() => {
+        vinDecodeInProgressRef.current = false;
+      }, 100);
+
       toast.success(`Found: ${result.year} ${result.make} ${result.model}${result.trim ? ' ' + result.trim : ''}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to decode VIN');
@@ -166,14 +249,14 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
   const handleVehicleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const yearNum = parseInt(vehicleYear, 10);
+    const parsedYear = parseInt(vehicleYear, 10);
     const mileageNum = parseInt(vehicleMileage, 10);
 
-    if (!vin || vin.length !== 17) {
-      toast.error('Please enter a valid 17-character VIN');
+    if (vin && vin.length !== 17) {
+      toast.error('VIN must be exactly 17 characters');
       return;
     }
-    if (!yearNum || yearNum < 1900 || yearNum > 2100) {
+    if (!parsedYear || parsedYear < 1900 || parsedYear > 2100) {
       toast.error('Please enter a valid year');
       return;
     }
@@ -192,8 +275,8 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
 
     try {
       await createVehicle.mutateAsync({
-        vin: vin.toUpperCase(),
-        year: yearNum,
+        vin: vin ? vin.toUpperCase() : undefined,
+        year: parsedYear,
         make: vehicleMake.trim(),
         model: vehicleModel.trim(),
         trim: vehicleTrim.trim() || undefined,
@@ -267,10 +350,10 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
           </div>
 
           <form onSubmit={handleVehicleSubmit} className="p-6 space-y-4">
-            {/* VIN Input with Decode */}
+            {/* VIN Input with Decode (optional) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                VIN
+                VIN <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -283,7 +366,6 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                   maxLength={17}
                   className="input flex-1 font-mono tracking-wider"
                   placeholder="Enter 17-character VIN"
-                  required
                   autoFocus
                 />
                 <button
@@ -296,12 +378,12 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {vin.length}/17 characters
+                {vin ? `${vin.length}/17 characters` : 'Enter VIN to auto-fill details, or select below'}
                 {vinDecoded && <span className="text-success ml-2">VIN decoded</span>}
               </p>
             </div>
 
-            {/* Year, Make, Model, Trim */}
+            {/* Year + Make */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -310,7 +392,13 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                 <input
                   type="number"
                   value={vehicleYear}
-                  onChange={(e) => setVehicleYear(e.target.value)}
+                  onChange={(e) => {
+                    setVehicleYear(e.target.value);
+                    if (!vinDecodeInProgressRef.current) {
+                      setVehicleModel('');
+                      setVehicleTrim('');
+                    }
+                  }}
                   className="input"
                   placeholder="2022"
                   min="1900"
@@ -322,28 +410,41 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Make
                 </label>
-                <input
-                  type="text"
+                <SearchableSelect
+                  options={makes || []}
                   value={vehicleMake}
-                  onChange={(e) => setVehicleMake(e.target.value)}
-                  className="input"
-                  placeholder="Honda"
+                  onChange={(val) => {
+                    setVehicleMake(val);
+                    if (!vinDecodeInProgressRef.current) {
+                      setVehicleModel('');
+                      setVehicleTrim('');
+                    }
+                  }}
+                  placeholder="Select make..."
+                  loading={makesLoading}
                   required
                 />
               </div>
             </div>
 
+            {/* Model + Trim */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Model
                 </label>
-                <input
-                  type="text"
+                <SearchableSelect
+                  options={models || []}
                   value={vehicleModel}
-                  onChange={(e) => setVehicleModel(e.target.value)}
-                  className="input"
-                  placeholder="Civic"
+                  onChange={(val) => {
+                    setVehicleModel(val);
+                    if (!vinDecodeInProgressRef.current) {
+                      setVehicleTrim('');
+                    }
+                  }}
+                  placeholder={!vehicleMake || !yearNum ? 'Select make & year first' : 'Select model...'}
+                  disabled={!vehicleMake || !yearNum}
+                  loading={modelsLoading}
                   required
                 />
               </div>
@@ -351,12 +452,14 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Trim
                 </label>
-                <input
-                  type="text"
+                <SearchableSelect
+                  options={trims || []}
                   value={vehicleTrim}
-                  onChange={(e) => setVehicleTrim(e.target.value)}
-                  className="input"
-                  placeholder="Sport Touring"
+                  onChange={setVehicleTrim}
+                  placeholder={!vehicleModel ? 'Select model first' : 'Select trim...'}
+                  disabled={!vehicleModel}
+                  loading={trimsLoading}
+                  allowCustom
                 />
               </div>
             </div>

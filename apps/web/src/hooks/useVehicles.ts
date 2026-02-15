@@ -7,8 +7,11 @@ import type {
   CreateVehicleRequest,
   UpdateVehicleRequest,
   UpdateMileageResponse,
+  NhtsaDecodeResult,
+  NhtsaMake,
+  NhtsaModel,
+  NhtsaTrim,
 } from '@otter-money/shared';
-import type { NhtsaDecodeResult } from './vehicleTypes';
 
 // Query keys
 export const vehicleKeys = {
@@ -18,6 +21,9 @@ export const vehicleKeys = {
   details: () => [...vehicleKeys.all, 'detail'] as const,
   detail: (id: string) => [...vehicleKeys.details(), id] as const,
   valuations: (id: string) => [...vehicleKeys.all, 'valuations', id] as const,
+  makes: ['vehicles', 'makes'] as const,
+  models: (make: string, year: number) => ['vehicles', 'models', make, year] as const,
+  trims: (make: string, model: string, year: number) => ['vehicles', 'trims', make, model, year] as const,
 };
 
 // Hooks
@@ -105,5 +111,31 @@ export function useDecodeVin() {
   return useMutation({
     mutationFn: (vin: string) =>
       api.post<NhtsaDecodeResult>('/vehicles/decode-vin', { vin }),
+  });
+}
+
+export function useVehicleMakes() {
+  return useQuery({
+    queryKey: vehicleKeys.makes,
+    queryFn: () => api.get<NhtsaMake[]>('/vehicles/makes'),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+}
+
+export function useVehicleModels(make: string | null, year: number | null) {
+  return useQuery({
+    queryKey: vehicleKeys.models(make!, year!),
+    queryFn: () => api.get<NhtsaModel[]>('/vehicles/models', { make: make!, year: year! }),
+    enabled: !!make && !!year && year >= 1900,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+}
+
+export function useVehicleTrims(make: string | null, model: string | null, year: number | null) {
+  return useQuery({
+    queryKey: vehicleKeys.trims(make!, model!, year!),
+    queryFn: () => api.get<NhtsaTrim[]>('/vehicles/trims', { make: make!, model: model!, year: year! }),
+    enabled: !!make && !!model && !!year && year >= 1900,
+    staleTime: 24 * 60 * 60 * 1000,
   });
 }

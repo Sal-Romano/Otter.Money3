@@ -251,7 +251,7 @@ export async function processImport(
 
   if (parsedRows.length === 0) {
     if (mode === 'preview') {
-      return { totalRows: 0, summary: { create: 0, update: 0, skip: 0 }, rows: [] };
+      return { totalRows: 0, summary: { create: 0, update: 0, skip: 0, unchanged: 0 }, rows: [] };
     }
     return { created: 0, updated: 0, skipped: 0, rulesApplied: 0, skippedDetails: [] };
   }
@@ -454,7 +454,7 @@ export async function processImport(
     }
 
     // Determine action
-    let action: 'create' | 'update' | 'skip' = matchedTx ? 'update' : 'create';
+    let action: 'create' | 'update' | 'skip' | 'unchanged' = matchedTx ? 'update' : 'create';
 
     // Check for duplicate matches
     if (matchedTx && matchedTxIds.has(matchedTx.id)) {

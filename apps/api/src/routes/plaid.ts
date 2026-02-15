@@ -592,7 +592,7 @@ router.delete('/items/:itemId', async (req, res, next) => {
 // Helper function to handle TRANSACTIONS webhooks
 async function handleTransactionsWebhook(
   webhookCode: string,
-  plaidItem: { id: string; itemId: string; accessToken: string; cursor: string | null }
+  plaidItem: { id: string; itemId: string; accessToken: string; cursor: string | null; institutionName?: string | null }
 ) {
   switch (webhookCode) {
     case 'SYNC_UPDATES_AVAILABLE':
@@ -662,6 +662,7 @@ async function syncPlaidTransactions(plaidItem: {
   itemId: string;
   accessToken: string;
   cursor: string | null;
+  institutionName?: string | null;
 }) {
   try {
     const accounts = await prisma.account.findMany({

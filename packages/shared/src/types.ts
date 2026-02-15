@@ -215,7 +215,7 @@ export interface VehicleValuation {
 }
 
 export interface CreateVehicleRequest {
-  vin: string;
+  vin?: string;
   year: number;
   make: string;
   model: string;
@@ -243,6 +243,34 @@ export interface UpdateMileageResponse extends VehicleWithDetails {
   previousValue: number | null;
   valueChange: number | null;
   valueChangePercent: number | null;
+}
+
+export interface NhtsaMake {
+  id: number;
+  name: string;
+}
+
+export interface NhtsaModel {
+  id: number;
+  name: string;
+}
+
+export interface NhtsaTrim {
+  id: number;
+  name: string;
+}
+
+export interface NhtsaDecodeResult {
+  year: number;
+  make: string;
+  model: string;
+  trim: string | null;
+  bodyClass: string | null;
+  driveType: string | null;
+  fuelType: string | null;
+  engineCylinders: number | null;
+  displacement: string | null;
+  transmission: string | null;
 }
 
 // ============================================

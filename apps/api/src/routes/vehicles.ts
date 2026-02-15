@@ -9,6 +9,10 @@ import {
   getVehicleValue,
   decodeVin,
   isMarketCheckConfigured,
+  getAllMakes,
+  getModelsForMakeYear,
+  getTrimsForMakeModelYear,
+  findVinForVehicle,
 } from '../services/marketcheck';
 
 export const vehiclesRouter = Router();
@@ -21,7 +25,7 @@ const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i;
 
 // Validation schemas
 const createVehicleSchema = z.object({
-  vin: z.string().regex(vinRegex, 'Invalid VIN format'),
+  vin: z.string().regex(vinRegex, 'Invalid VIN format').optional(),
   year: z.number().int().min(1900).max(2100),
   make: z.string().min(1).max(100),
   model: z.string().min(1).max(100),
@@ -144,6 +148,77 @@ vehiclesRouter.post('/decode-vin', async (req, res, next) => {
   }
 });
 
+// Get all vehicle makes (NHTSA, free, cached 24h)
+vehiclesRouter.get('/makes', async (_req, res, next) => {
+  try {
+    const makes = await getAllMakes();
+    res.json({ data: makes });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get models for a given make + year (NHTSA, free, cached 24h)
+vehiclesRouter.get('/models', async (req, res, next) => {
+  try {
+    const make = req.query.make as string;
+    const yearStr = req.query.year as string;
+
+    if (!make || !yearStr) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_ERROR,
+        'make and year query parameters are required',
+        400
+      );
+    }
+
+    const year = parseInt(yearStr, 10);
+    if (isNaN(year) || year < 1900 || year > 2100) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_ERROR,
+        'year must be a number between 1900 and 2100',
+        400
+      );
+    }
+
+    const models = await getModelsForMakeYear(make, year);
+    res.json({ data: models });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get trims for a given make + model + year (MarketCheck facets, cached 24h)
+vehiclesRouter.get('/trims', async (req, res, next) => {
+  try {
+    const make = req.query.make as string;
+    const model = req.query.model as string;
+    const yearStr = req.query.year as string;
+
+    if (!make || !model || !yearStr) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_ERROR,
+        'make, model, and year query parameters are required',
+        400
+      );
+    }
+
+    const year = parseInt(yearStr, 10);
+    if (isNaN(year) || year < 1900 || year > 2100) {
+      throw new AppError(
+        ERROR_CODES.VALIDATION_ERROR,
+        'year must be a number between 1900 and 2100',
+        400
+      );
+    }
+
+    const trims = await getTrimsForMakeModelYear(make, model, year);
+    res.json({ data: trims });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // List household vehicles
 vehiclesRouter.get('/', async (req, res, next) => {
   try {
@@ -188,16 +263,27 @@ vehiclesRouter.post('/', async (req, res, next) => {
     const data = createVehicleSchema.parse(req.body);
     const householdId = req.user!.householdId!;
 
-    // Check for duplicate VIN in household
-    const existing = await prisma.vehicle.findUnique({
-      where: { householdId_vin: { householdId, vin: data.vin.toUpperCase() } },
-    });
-    if (existing) {
-      throw new AppError(
-        ERROR_CODES.CONFLICT,
-        'A vehicle with this VIN already exists in your household',
-        409
-      );
+    // Determine the VIN to store
+    // If no VIN provided, generate a placeholder (NOVIN + random chars)
+    let storedVin: string;
+    if (data.vin) {
+      storedVin = data.vin.toUpperCase();
+
+      // Check for duplicate VIN in household
+      const existing = await prisma.vehicle.findUnique({
+        where: { householdId_vin: { householdId, vin: storedVin } },
+      });
+      if (existing) {
+        throw new AppError(
+          ERROR_CODES.CONFLICT,
+          'A vehicle with this VIN already exists in your household',
+          409
+        );
+      }
+    } else {
+      // Generate a unique placeholder VIN (17 chars to satisfy DB constraint)
+      const rand = Math.random().toString(36).substring(2, 12).toUpperCase().replace(/[IOQ]/g, 'X');
+      storedVin = ('NOVIN' + rand).substring(0, 17).padEnd(17, '0');
     }
 
     const accountName =
@@ -222,7 +308,7 @@ vehiclesRouter.post('/', async (req, res, next) => {
         data: {
           householdId,
           accountId: acc.id,
-          vin: data.vin.toUpperCase(),
+          vin: storedVin,
           year: data.year,
           make: data.make,
           model: data.model,
@@ -245,48 +331,63 @@ vehiclesRouter.post('/', async (req, res, next) => {
     let valuation = null;
     try {
       if (isMarketCheckConfigured()) {
-        const priceResult = await getVehicleValue(
-          data.vin.toUpperCase(),
-          data.mileage,
-          data.zipCode
-        );
+        // If no real VIN provided, look up a representative VIN from MarketCheck listings
+        let valuationVin = data.vin ? storedVin : null;
+        if (!valuationVin) {
+          valuationVin = await findVinForVehicle(
+            data.year,
+            data.make,
+            data.model,
+            data.trim
+          );
+        }
 
-        const [newValuation] = await prisma.$transaction([
-          prisma.vehicleValuation.create({
-            data: {
-              vehicleId: vehicle.id,
-              date: new Date(),
-              mileageAtValuation: data.mileage,
-              marketValue: new Decimal(priceResult.marketValue),
-              msrp: priceResult.msrp ? new Decimal(priceResult.msrp) : null,
-              rawResponse: priceResult.rawResponse as any,
-            },
-          }),
-          prisma.vehicle.update({
-            where: { id: vehicle.id },
-            data: { lastValuationAt: new Date() },
-          }),
-          prisma.transaction.create({
-            data: {
-              accountId: account.id,
-              date: new Date(),
-              amount: new Decimal(
-                priceResult.marketValue - (data.purchasePrice || 0)
-              ),
-              description: 'Initial vehicle valuation',
-              isManual: true,
-              isAdjustment: true,
-            },
-          }),
-          prisma.account.update({
-            where: { id: account.id },
-            data: {
-              currentBalance: new Decimal(priceResult.marketValue),
-              availableBalance: new Decimal(priceResult.marketValue),
-            },
-          }),
-        ]);
-        valuation = newValuation;
+        if (!valuationVin) {
+          console.warn('Could not find a VIN for valuation — skipping initial pricing');
+        } else {
+          const priceResult = await getVehicleValue(
+            valuationVin,
+            data.mileage,
+            data.zipCode
+          );
+
+          const [newValuation] = await prisma.$transaction([
+            prisma.vehicleValuation.create({
+              data: {
+                vehicleId: vehicle.id,
+                date: new Date(),
+                mileageAtValuation: data.mileage,
+                marketValue: new Decimal(priceResult.marketValue),
+                msrp: priceResult.msrp ? new Decimal(priceResult.msrp) : null,
+                rawResponse: priceResult.rawResponse as any,
+              },
+            }),
+            prisma.vehicle.update({
+              where: { id: vehicle.id },
+              data: { lastValuationAt: new Date() },
+            }),
+            prisma.transaction.create({
+              data: {
+                accountId: account.id,
+                date: new Date(),
+                amount: new Decimal(
+                  priceResult.marketValue - (data.purchasePrice || 0)
+                ),
+                description: 'Initial vehicle valuation',
+                isManual: true,
+                isAdjustment: true,
+              },
+            }),
+            prisma.account.update({
+              where: { id: account.id },
+              data: {
+                currentBalance: new Decimal(priceResult.marketValue),
+                availableBalance: new Decimal(priceResult.marketValue),
+              },
+            }),
+          ]);
+          valuation = newValuation;
+        }
       }
     } catch (err) {
       console.warn('Initial vehicle valuation failed (vehicle still created):', err);
@@ -367,8 +468,27 @@ vehiclesRouter.post('/:id/update-mileage', async (req, res, next) => {
 
     const previousBalance = Number(vehicle.account.currentBalance);
 
+    // For vehicles without a real VIN, look up a representative one
+    let valuationVin = vehicle.vin;
+    if (valuationVin.startsWith('NOVIN')) {
+      const foundVin = await findVinForVehicle(
+        vehicle.year,
+        vehicle.make,
+        vehicle.model,
+        vehicle.trim || undefined
+      );
+      if (!foundVin) {
+        throw new AppError(
+          ERROR_CODES.MARKETCHECK_ERROR,
+          'Could not find matching vehicle listings for valuation',
+          422
+        );
+      }
+      valuationVin = foundVin;
+    }
+
     const priceResult = await getVehicleValue(
-      vehicle.vin,
+      valuationVin,
       data.mileage,
       vehicle.zipCode
     );
