@@ -51,6 +51,7 @@ export interface Account {
   householdId: string;
   ownerId: string | null; // null = joint
   name: string;
+  officialName: string | null;
   type: AccountType;
   subtype: string | null;
   connectionType: ConnectionType;

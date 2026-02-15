@@ -192,6 +192,7 @@ router.post('/exchange-token', async (req, res, next) => {
             householdId: user.householdId!,
             ownerId: userId, // Auto-assign to the connecting user
             name: plaidAccount.name,
+            officialName: plaidAccount.name,
             type: accountType as any,
             subtype: plaidAccount.subtype || undefined,
             connectionType: 'PLAID',

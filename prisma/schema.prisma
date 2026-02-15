@@ -80,6 +80,7 @@ model Account {
   ownerId            String?
   owner              User?            @relation("AccountOwner", fields: [ownerId], references: [id])
   name               String
+  officialName       String?
   type               AccountType
   subtype            String?
   connectionType     ConnectionType   @default(MANUAL)
