@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePlaidLink } from 'react-plaid-link';
 import { api } from '../utils/api';
 
@@ -98,17 +98,24 @@ export function usePlaidLinkPreview(
     },
   });
 
-  const openLink = useCallback(() => {
-    if (!linkToken) {
-      fetchLinkToken().then(() => {});
-    } else {
+  const pendingOpen = useRef(false);
+
+  // Auto-open when token becomes ready after a lazy fetch
+  useEffect(() => {
+    if (pendingOpen.current && linkToken && ready) {
+      pendingOpen.current = false;
       open();
     }
-  }, [linkToken, open, fetchLinkToken]);
+  }, [linkToken, ready, open]);
 
-  useEffect(() => {
-    fetchLinkToken();
-  }, [fetchLinkToken]);
+  const openLink = useCallback(() => {
+    if (linkToken && ready) {
+      open();
+    } else {
+      pendingOpen.current = true;
+      fetchLinkToken();
+    }
+  }, [linkToken, ready, open, fetchLinkToken]);
 
   return {
     open: openLink,
@@ -168,22 +175,24 @@ export function usePlaidLinkConnect(
     },
   });
 
-  // Override open to fetch token first if not available
-  const openLink = useCallback(() => {
-    if (!linkToken) {
-      fetchLinkToken().then(() => {
-        // Token will be set, triggering re-render, but we don't open here
-        // User needs to click again
-      });
-    } else {
+  const pendingOpen = useRef(false);
+
+  // Auto-open when token becomes ready after a lazy fetch
+  useEffect(() => {
+    if (pendingOpen.current && linkToken && ready) {
+      pendingOpen.current = false;
       open();
     }
-  }, [linkToken, open, fetchLinkToken]);
+  }, [linkToken, ready, open]);
 
-  // Auto-fetch token on mount
-  useEffect(() => {
-    fetchLinkToken();
-  }, [fetchLinkToken]);
+  const openLink = useCallback(() => {
+    if (linkToken && ready) {
+      open();
+    } else {
+      pendingOpen.current = true;
+      fetchLinkToken();
+    }
+  }, [linkToken, ready, open, fetchLinkToken]);
 
   return {
     open: openLink,
