@@ -5,6 +5,7 @@ import type { AccountWithOwner, AccountType } from '@otter-money/shared';
 import { useHouseholdMembers } from '../hooks/useHousehold';
 import { useCreateAccount, useUpdateAccount, useUpdateBalance, useDeleteAccount } from '../hooks/useAccounts';
 import { useCreateVehicle, useDecodeVin, useVehicleMakes, useVehicleModels, useVehicleTrims } from '../hooks/useVehicles';
+import { usePlaidItemDetails, usePlaidItems } from '../hooks/usePlaidLink';
 import { AccountIcon, accountTypeLabels } from './AccountIcon';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { SearchableSelect } from './SearchableSelect';
@@ -38,6 +39,26 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
   const [showBalanceUpdate, setShowBalanceUpdate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showOriginalName, setShowOriginalName] = useState(false);
+  const [showConnectionPanel, setShowConnectionPanel] = useState(false);
+  const [connectionDetails, setConnectionDetails] = useState<{
+    itemId: string;
+    institutionName: string | null;
+    createdAt: string;
+    userId: string;
+    userName: string;
+    accounts: Array<{
+      id: string;
+      name: string;
+      officialName: string | null;
+      type: string;
+      connectionStatus: string;
+      plaidAccountId: string | null;
+      lastSyncedAt: string | null;
+      currentBalance: number;
+    }>;
+  } | null>(null);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   // Vehicle sub-flow state
   const [showVehicleForm, setShowVehicleForm] = useState(false);
@@ -67,6 +88,8 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
   const deleteAccount = useDeleteAccount();
   const createVehicle = useCreateVehicle();
   const decodeVin = useDecodeVin();
+  const plaidDetails = usePlaidItemDetails();
+  const plaidItems = usePlaidItems();
 
   // Vehicle dropdown data
   const yearNum = parseInt(vehicleYear, 10) || null;
@@ -135,6 +158,9 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
       setShowDeleteConfirm(false);
       setShowOriginalName(false);
       setShowVehicleForm(false);
+      setShowConnectionPanel(false);
+      setConnectionDetails(null);
+      setShowDisconnectConfirm(false);
     } else if (isOpen && !account) {
       setName('');
       setType('CHECKING');
@@ -145,6 +171,9 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
       setShowDeleteConfirm(false);
       setShowOriginalName(false);
       setShowVehicleForm(false);
+      setShowConnectionPanel(false);
+      setConnectionDetails(null);
+      setShowDisconnectConfirm(false);
       resetVehicleFields();
     }
   }, [isOpen, account]);
@@ -609,10 +638,34 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
                 {isEditing ? 'Edit Account' : 'Add Account'}
               </h2>
               {isEditing && isConnected && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (showConnectionPanel) {
+                      setShowConnectionPanel(false);
+                      return;
+                    }
+                    if (account?.connectionType === 'PLAID' && account.plaidItemId) {
+                      try {
+                        const details = await plaidDetails.getItemDetails(account.plaidItemId);
+                        setConnectionDetails(details);
+                      } catch {
+                        // Still show panel even if details fail
+                      }
+                    }
+                    setShowConnectionPanel(true);
+                  }}
+                  className={clsx(
+                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors',
+                    showConnectionPanel
+                      ? 'bg-green-100 text-green-800 border-green-300'
+                      : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                  )}
+                >
                   <LinkIcon className="h-3 w-3" />
                   {account?.connectionType === 'PLAID' ? 'Plaid' : 'SimpleFin'}
-                </span>
+                  <ChevronDownIcon className={clsx('h-3 w-3 transition-transform', showConnectionPanel && 'rotate-180')} />
+                </button>
               )}
             </div>
             <button
@@ -624,6 +677,136 @@ export function AccountModal({ account, isOpen, onClose }: AccountModalProps) {
             </button>
           </div>
         </div>
+
+        {/* Connection Info Panel */}
+        {showConnectionPanel && isEditing && isConnected && (
+          <div className="mx-6 mt-4 rounded-lg border border-green-200 bg-green-50/50 overflow-hidden">
+            {plaidDetails.isLoading && !connectionDetails && (
+              <div className="flex items-center justify-center py-4">
+                <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            {account?.connectionType === 'PLAID' && connectionDetails && (
+              <div className="p-3 space-y-2.5">
+                {/* Institution */}
+                <div className="flex items-center gap-2">
+                  <BankIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-900">
+                    {connectionDetails.institutionName || 'Bank Connection'}
+                  </span>
+                </div>
+
+                {/* Details grid */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                  <div>
+                    <span className="text-gray-500">Status</span>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className={clsx(
+                        'w-1.5 h-1.5 rounded-full',
+                        account.connectionStatus === 'ACTIVE' ? 'bg-green-500' :
+                        account.connectionStatus === 'REQUIRES_REAUTH' ? 'bg-amber-500' :
+                        account.connectionStatus === 'ERROR' ? 'bg-red-500' : 'bg-gray-400'
+                      )} />
+                      <span className="font-medium text-gray-700">
+                        {account.connectionStatus === 'ACTIVE' ? 'Connected' :
+                         account.connectionStatus === 'REQUIRES_REAUTH' ? 'Needs Re-auth' :
+                         account.connectionStatus === 'ERROR' ? 'Error' : 'Disconnected'}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Connected by</span>
+                    <p className="font-medium text-gray-700 mt-0.5">{connectionDetails.userName}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Last synced</span>
+                    <p className="font-medium text-gray-700 mt-0.5">
+                      {account.lastSyncedAt
+                        ? new Date(account.lastSyncedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : 'Never'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Connected</span>
+                    <p className="font-medium text-gray-700 mt-0.5">
+                      {new Date(connectionDetails.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Linked accounts count */}
+                {connectionDetails.accounts.length > 1 && (
+                  <p className="text-xs text-gray-500">
+                    This connection includes {connectionDetails.accounts.length} accounts from {connectionDetails.institutionName || 'this bank'}.
+                  </p>
+                )}
+
+                {/* Disconnect button */}
+                {!showDisconnectConfirm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDisconnectConfirm(true)}
+                    className="w-full mt-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg py-2 transition-colors"
+                  >
+                    Disconnect from Plaid
+                  </button>
+                ) : (
+                  <div className="mt-1 rounded-lg bg-red-50 border border-red-200 p-3 space-y-2">
+                    <p className="text-xs text-red-700">
+                      This will stop syncing {connectionDetails.accounts.length > 1
+                        ? `all ${connectionDetails.accounts.length} accounts from ${connectionDetails.institutionName || 'this bank'}`
+                        : 'this account'}. Your accounts and all transactions will be kept — they'll become manual accounts.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowDisconnectConfirm(false)}
+                        className="flex-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg py-1.5 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDisconnecting}
+                        onClick={async () => {
+                          if (!account?.plaidItemId) return;
+                          try {
+                            setIsDisconnecting(true);
+                            const result = await plaidItems.disconnectItem(account.plaidItemId);
+                            toast.success(
+                              `Disconnected ${result.accountsDisconnected} account${result.accountsDisconnected !== 1 ? 's' : ''}. ${result.transactionsPreserved.toLocaleString()} transactions preserved.`
+                            );
+                            onClose();
+                          } catch {
+                            toast.error('Failed to disconnect. Please try again.');
+                          } finally {
+                            setIsDisconnecting(false);
+                          }
+                        }}
+                        className="flex-1 text-xs font-medium text-white bg-red-600 rounded-lg py-1.5 hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {account?.connectionType === 'SIMPLEFIN' && (
+              <div className="p-3">
+                <div className="flex items-center gap-2">
+                  <BankIcon className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-900">SimpleFin Connection</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">
+                  This account is synced via SimpleFin. Manage the connection from the Accounts page.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -913,6 +1096,22 @@ function ChevronLeftIcon({ className }: { className: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function BankIcon({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
     </svg>
   );
 }

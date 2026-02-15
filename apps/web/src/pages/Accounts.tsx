@@ -1,11 +1,12 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAccounts, useAccountSummary } from '../hooks/useAccounts';
 import { useVehicles } from '../hooks/useVehicles';
 import { AccountIcon, accountTypeLabels } from '../components/AccountIcon';
 import { AccountModal } from '../components/AccountModal';
-import { usePlaidLinkConnect, usePlaidItems, usePlaidSync } from '../hooks/usePlaidLink';
+import { PlaidReconnectWizard } from '../components/PlaidReconnectWizard';
+import { usePlaidLinkConnect, usePlaidLinkPreview, usePlaidItems, usePlaidSync } from '../hooks/usePlaidLink';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { AccountWithOwner, AccountType, VehicleWithDetails } from '@otter-money/shared';
 
@@ -48,8 +49,16 @@ export default function Accounts() {
   const [showPlaidSuccess, setShowPlaidSuccess] = useState(false);
   const [plaidSuccessMessage, setPlaidSuccessMessage] = useState('');
   const [showBankConnections, setShowBankConnections] = useState(false);
+  const [showReconnectWizard, setShowReconnectWizard] = useState(false);
+  const [reconnectPreviewData, setReconnectPreviewData] = useState<any>(null);
 
-  const { open: openPlaidLink, ready: plaidReady } = usePlaidLinkConnect(
+  // Determine if we should use the preview flow (when manual accounts exist)
+  const hasManualAccounts = useMemo(() => {
+    return accounts?.some((a) => a.connectionType === 'MANUAL') || false;
+  }, [accounts]);
+
+  // Direct connect flow (no manual accounts — straightforward)
+  const { open: openPlaidDirect, ready: plaidDirectReady } = usePlaidLinkConnect(
     (data) => {
       setPlaidSuccessMessage(
         `Successfully connected ${data.institutionName || 'your bank'}! Added ${data.accountsCreated} account${data.accountsCreated !== 1 ? 's' : ''}.`
@@ -61,7 +70,26 @@ export default function Accounts() {
     }
   );
 
+  // Preview flow (manual accounts exist — show wizard)
+  const { open: openPlaidPreview, ready: plaidPreviewReady, isLoading: plaidPreviewLoading } = usePlaidLinkPreview(
+    (data) => {
+      setReconnectPreviewData(data);
+      setShowReconnectWizard(true);
+    }
+  );
+
   const plaidItems = usePlaidItems();
+
+  // Smart open: use preview flow when manual accounts exist, direct otherwise
+  const openPlaidLink = useCallback(() => {
+    if (hasManualAccounts) {
+      openPlaidPreview();
+    } else {
+      openPlaidDirect();
+    }
+  }, [hasManualAccounts, openPlaidPreview, openPlaidDirect]);
+
+  const plaidReady = hasManualAccounts ? plaidPreviewReady : plaidDirectReady;
 
   useEffect(() => {
     if (showBankConnections) {
@@ -294,37 +322,62 @@ export default function Accounts() {
       {showBankConnections && (
         <BankConnectionsModal
           items={plaidItems.items}
+          accounts={accounts || []}
           isLoading={plaidItems.isLoading}
           onRefresh={refetch}
-          onDisconnect={async (itemId, institutionName) => {
-            // Get accounts for this item to show count
-            const itemAccounts = accounts?.filter(a => a.plaidItemId === itemId) || [];
-            const accountCount = itemAccounts.length;
-
-            const message = `Are you sure you want to disconnect ${institutionName || 'this bank'}?\n\n` +
-              `This will permanently remove:\n` +
-              `• ${accountCount} account${accountCount !== 1 ? 's' : ''}\n` +
-              `• All associated transactions\n\n` +
-              `This action cannot be undone.`;
-
-            if (confirm(message)) {
-              try {
-                const result = await plaidItems.removeItem(itemId);
-                refetch();
-
-                // Show success message with counts
-                if (result) {
-                  toast.success(
-                    `Disconnected! Removed ${result.accountsDeleted} account${result.accountsDeleted !== 1 ? 's' : ''} and ${result.transactionsDeleted} transaction${result.transactionsDeleted !== 1 ? 's' : ''}.`
-                  );
-                }
-              } catch (err) {
-                toast.error('Failed to disconnect. Please try again.');
+          onDisconnect={async (itemId) => {
+            try {
+              const result = await plaidItems.disconnectItem(itemId);
+              refetch();
+              if (result) {
+                toast.success(
+                  `Disconnected! ${result.accountsDisconnected} account${result.accountsDisconnected !== 1 ? 's' : ''} kept with ${result.transactionsPreserved.toLocaleString()} transactions preserved.`
+                );
               }
+            } catch {
+              toast.error('Failed to disconnect. Please try again.');
+            }
+          }}
+          onRemove={async (itemId) => {
+            try {
+              const result = await plaidItems.removeItem(itemId);
+              refetch();
+              if (result) {
+                toast.success(
+                  `Removed ${result.accountsDeleted} account${result.accountsDeleted !== 1 ? 's' : ''} and ${result.transactionsDeleted.toLocaleString()} transaction${result.transactionsDeleted !== 1 ? 's' : ''}.`
+                );
+              }
+            } catch {
+              toast.error('Failed to remove. Please try again.');
             }
           }}
           onClose={() => setShowBankConnections(false)}
         />
+      )}
+
+      {/* Plaid Reconnect Wizard */}
+      <PlaidReconnectWizard
+        isOpen={showReconnectWizard}
+        previewData={reconnectPreviewData}
+        onClose={() => {
+          setShowReconnectWizard(false);
+          setReconnectPreviewData(null);
+        }}
+        onComplete={() => {
+          refetch();
+          plaidItems.fetchItems();
+        }}
+      />
+
+      {/* Preview loading overlay */}
+      {plaidPreviewLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-gray-700">Analyzing accounts...</p>
+            <p className="text-xs text-gray-500">Fetching transactions for preview</p>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -332,15 +385,19 @@ export default function Accounts() {
 
 interface BankConnectionsModalProps {
   items: Array<{ itemId: string; institutionName?: string; createdAt: string }>;
+  accounts: AccountWithOwner[];
   isLoading: boolean;
   onRefresh: () => void;
-  onDisconnect: (itemId: string, institutionName?: string) => Promise<void>;
+  onDisconnect: (itemId: string) => Promise<void>;
+  onRemove: (itemId: string) => Promise<void>;
   onClose: () => void;
 }
 
-function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClose }: BankConnectionsModalProps) {
+function BankConnectionsModal({ items, accounts, isLoading, onRefresh, onDisconnect, onRemove, onClose }: BankConnectionsModalProps) {
   const { syncTransactions } = usePlaidSync();
   const [syncingItemId, setSyncingItemId] = useState<string | null>(null);
+  const [disconnectingItemId, setDisconnectingItemId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ itemId: string; type: 'disconnect' | 'remove' } | null>(null);
 
   useBodyScrollLock(true);
 
@@ -358,6 +415,11 @@ function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClo
       setSyncingItemId(null);
     }
   };
+
+  const getItemAccountCount = (itemId: string) => {
+    return accounts.filter(a => a.plaidItemId === itemId).length;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
@@ -394,52 +456,130 @@ function BankConnectionsModal({ items, isLoading, onRefresh, onDisconnect, onClo
           </div>
         ) : (
           <div className="space-y-3">
-            {items.map((item) => (
-              <div
-                key={item.itemId}
-                className="p-4 border border-gray-200 rounded-lg"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <BankIcon className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {item.institutionName || 'Bank Connection'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Connected {new Date(item.createdAt).toLocaleDateString()}
-                      </p>
+            {items.map((item) => {
+              const accountCount = getItemAccountCount(item.itemId);
+              const isConfirming = confirmAction?.itemId === item.itemId;
+              const isBusy = syncingItemId === item.itemId || disconnectingItemId === item.itemId;
+
+              return (
+                <div
+                  key={item.itemId}
+                  className="p-4 border border-gray-200 rounded-lg"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <BankIcon className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {item.institutionName || 'Bank Connection'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Connected {new Date(item.createdAt).toLocaleDateString()}
+                          {accountCount > 0 && ` · ${accountCount} account${accountCount !== 1 ? 's' : ''}`}
+                        </p>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Confirm panel */}
+                  {isConfirming ? (
+                    <div className="space-y-2">
+                      {confirmAction.type === 'disconnect' ? (
+                        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                          <p className="text-xs text-amber-800 font-medium mb-1">Stop syncing?</p>
+                          <p className="text-xs text-amber-700">
+                            Your {accountCount} account{accountCount !== 1 ? 's' : ''} and all transactions will be kept as manual accounts. You can reconnect later.
+                          </p>
+                          <div className="flex gap-2 mt-2.5">
+                            <button
+                              onClick={() => setConfirmAction(null)}
+                              className="flex-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg py-1.5 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              disabled={isBusy}
+                              onClick={async () => {
+                                setDisconnectingItemId(item.itemId);
+                                await onDisconnect(item.itemId);
+                                setDisconnectingItemId(null);
+                                setConfirmAction(null);
+                              }}
+                              className="flex-1 text-xs font-medium text-white bg-amber-600 rounded-lg py-1.5 hover:bg-amber-700 disabled:opacity-50"
+                            >
+                              {disconnectingItemId === item.itemId ? 'Disconnecting...' : 'Disconnect'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+                          <p className="text-xs text-red-800 font-medium mb-1">Delete everything?</p>
+                          <p className="text-xs text-red-700">
+                            This will permanently delete {accountCount} account{accountCount !== 1 ? 's' : ''} and all their transactions. This cannot be undone.
+                          </p>
+                          <div className="flex gap-2 mt-2.5">
+                            <button
+                              onClick={() => setConfirmAction(null)}
+                              className="flex-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg py-1.5 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              disabled={isBusy}
+                              onClick={async () => {
+                                setDisconnectingItemId(item.itemId);
+                                await onRemove(item.itemId);
+                                setDisconnectingItemId(null);
+                                setConfirmAction(null);
+                              }}
+                              className="flex-1 text-xs font-medium text-white bg-red-600 rounded-lg py-1.5 hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {disconnectingItemId === item.itemId ? 'Removing...' : 'Delete All Data'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSync(item.itemId, item.institutionName)}
+                          disabled={isBusy}
+                          className="btn-secondary flex-1 text-sm"
+                        >
+                          {syncingItemId === item.itemId ? (
+                            <>
+                              <SpinnerIcon className="mr-1 h-4 w-4 animate-spin" />
+                              Syncing...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshIcon className="mr-1 h-4 w-4" />
+                              Refresh
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setConfirmAction({ itemId: item.itemId, type: 'disconnect' })}
+                          disabled={isBusy}
+                          className="text-sm text-amber-600 hover:text-amber-700 font-medium px-3"
+                        >
+                          Disconnect
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setConfirmAction({ itemId: item.itemId, type: 'remove' })}
+                        disabled={isBusy}
+                        className="w-full text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
+                      >
+                        Remove all data...
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleSync(item.itemId, item.institutionName)}
-                    disabled={syncingItemId === item.itemId}
-                    className="btn-secondary flex-1 text-sm"
-                  >
-                    {syncingItemId === item.itemId ? (
-                      <>
-                        <SpinnerIcon className="mr-1 h-4 w-4 animate-spin" />
-                        Syncing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshIcon className="mr-1 h-4 w-4" />
-                        Refresh
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => onDisconnect(item.itemId, item.institutionName)}
-                    disabled={syncingItemId === item.itemId}
-                    className="text-sm text-error hover:text-error-600 font-medium px-3"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

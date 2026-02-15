@@ -561,3 +561,72 @@ export interface ImportExecuteResponse {
   rulesApplied: number;
   skippedDetails: { rowNumber: number; reason: string }[];
 }
+
+// ============================================
+// PLAID CONNECTION MANAGEMENT
+// ============================================
+
+export interface PlaidItemDetails {
+  itemId: string;
+  institutionName: string | null;
+  createdAt: string;
+  userId: string;
+  userName: string;
+  accounts: {
+    id: string;
+    name: string;
+    officialName: string | null;
+    type: AccountType;
+    connectionStatus: ConnectionStatus;
+    plaidAccountId: string | null;
+    lastSyncedAt: string | null;
+    currentBalance: number;
+  }[];
+}
+
+export interface PlaidDisconnectResponse {
+  success: boolean;
+  accountsDisconnected: number;
+  transactionsPreserved: number;
+}
+
+export interface PlaidAccountPreview {
+  plaidAccountId: string;
+  name: string;
+  officialName: string | null;
+  type: AccountType;
+  subtype: string | null;
+  currentBalance: number;
+  availableBalance: number | null;
+  suggestedMatch: {
+    accountId: string;
+    accountName: string;
+    matchReason: string;
+  } | null;
+  transactionPreview: ImportPreviewResponse;
+}
+
+export interface PlaidReconnectPreviewResponse {
+  tempItemId: string;
+  institutionName: string | null;
+  plaidAccounts: PlaidAccountPreview[];
+}
+
+export interface PlaidAccountMapping {
+  plaidAccountId: string;
+  existingAccountId: string | null; // null = create new
+  skipTransactionIds: string[]; // externalIds to skip
+}
+
+export interface PlaidReconnectExecuteRequest {
+  tempItemId: string;
+  mappings: PlaidAccountMapping[];
+}
+
+export interface PlaidReconnectExecuteResponse {
+  success: boolean;
+  accountsLinked: number;
+  accountsCreated: number;
+  transactionsAdded: number;
+  transactionsSkipped: number;
+}
