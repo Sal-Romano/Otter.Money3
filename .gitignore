@@ -15,6 +15,7 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 .env*.local
 
 # Logs
@@ -55,9 +56,9 @@ prisma/*.db-journal
 docker-compose.override.yml
 
 # Capacitor
-ios/App/Pods/
-android/.gradle/
-android/app/build/
+apps/web/ios/App/Pods/
+apps/web/android/.gradle/
+apps/web/android/app/build/
 
 # Temporary files
 tmp/

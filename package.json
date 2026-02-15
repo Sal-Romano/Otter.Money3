@@ -22,7 +22,12 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "test": "npm run test --workspaces --if-present",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/dist packages/*/dist"
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/dist packages/*/dist",
+    "ios:sync": "./scripts/ios-sync.sh",
+    "ios:build": "./scripts/ios-sync.sh --build",
+    "ios:open": "./scripts/ios-sync.sh --build --open",
+    "ios:live": "./scripts/ios-live-reload.sh start",
+    "ios:live:stop": "./scripts/ios-live-reload.sh stop"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
+import { API_BASE } from '../utils/api';
 
 export default function JoinHousehold() {
   const { inviteCode: urlInviteCode } = useParams();
@@ -18,7 +19,7 @@ export default function JoinHousehold() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/register/join', {
+      const response = await fetch(`${API_BASE}/auth/register/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

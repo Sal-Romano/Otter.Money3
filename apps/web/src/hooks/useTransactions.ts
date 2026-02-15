@@ -1,5 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../utils/api';
+import { api, API_BASE } from '../utils/api';
 import type { TransactionWithDetails, AccountType } from '@otter-money/shared';
 import { accountKeys } from './useAccounts';
 import { dashboardKeys } from './useDashboard';
@@ -73,7 +73,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
       if (filters.offset) params.offset = filters.offset;
       if (filters.includeAdjustments) params.includeAdjustments = 'true';
 
-      const response = await fetch(`/api/transactions?${new URLSearchParams(params as any)}`, {
+      const response = await fetch(`${API_BASE}/transactions?${new URLSearchParams(params as any)}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('otter-money-auth') ? JSON.parse(localStorage.getItem('otter-money-auth')!).state.accessToken : ''}`,
         },
@@ -116,7 +116,7 @@ export function useInfiniteTransactions(filters: Omit<TransactionFilters, 'offse
     queryKey: transactionKeys.infinite(filters),
     queryFn: async ({ pageParam = 0 }) => {
       const params = buildParams({ ...filters, limit: filters.limit }, pageParam);
-      const response = await fetch(`/api/transactions?${params}`, {
+      const response = await fetch(`${API_BASE}/transactions?${params}`, {
         headers: getAuthHeader(),
       });
       if (!response.ok) throw new Error('Failed to fetch transactions');
@@ -141,7 +141,7 @@ export function useUncategorizedCount() {
     queryKey: transactionKeys.uncategorizedCount(),
     queryFn: async () => {
       const params = new URLSearchParams({ categoryId: 'uncategorized', limit: '1' });
-      const response = await fetch(`/api/transactions?${params}`, {
+      const response = await fetch(`${API_BASE}/transactions?${params}`, {
         headers: getAuthHeader(),
       });
       if (!response.ok) throw new Error('Failed to fetch uncategorized count');

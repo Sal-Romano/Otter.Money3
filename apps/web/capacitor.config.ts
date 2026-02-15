@@ -1,14 +1,17 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const devServer = process.env.CAPACITOR_SERVER_URL;
+
 const config: CapacitorConfig = {
   appId: 'money.otter.app',
   appName: 'Otter Money',
   webDir: 'dist',
-  server: {
-    // For development with live reload
-    // url: 'http://YOUR_LOCAL_IP:3000',
-    // cleartext: true,
-  },
+  server: devServer
+    ? {
+        url: devServer,
+        cleartext: true,
+      }
+    : {},
   ios: {
     contentInset: 'never',
     backgroundColor: '#9F6FBA',

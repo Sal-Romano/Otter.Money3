@@ -8,6 +8,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ChevronDown, ChevronRight, Trash2, Plus, Pencil, X, Check } from 'lucide-react';
 import { ImportWizardModal } from '../components/ImportWizardModal';
 import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
+import { API_BASE } from '../utils/api';
 
 interface HouseholdMember {
   id: string;
@@ -66,10 +67,10 @@ export default function Settings() {
 
       try {
         const [membersRes, inviteRes] = await Promise.all([
-          fetch('/api/household/members', {
+          fetch(`${API_BASE}/household/members`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
-          fetch('/api/household/invite', {
+          fetch(`${API_BASE}/household/invite`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           }),
         ]);
@@ -96,7 +97,7 @@ export default function Settings() {
   const handleExportAll = async () => {
     setIsExporting(true);
     try {
-      const response = await fetch('/api/transactions/export', {
+      const response = await fetch(`${API_BASE}/transactions/export`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!response.ok) throw new Error('Export failed');
@@ -130,7 +131,7 @@ export default function Settings() {
     setIsRegenerating(true);
 
     try {
-      const res = await fetch('/api/household/invite/regenerate', {
+      const res = await fetch(`${API_BASE}/household/invite/regenerate`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -150,7 +151,7 @@ export default function Settings() {
     if (!isOrganizer) return;
 
     try {
-      const res = await fetch(`/api/household/members/${partnerId}/removal-impact`, {
+      const res = await fetch(`${API_BASE}/household/members/${partnerId}/removal-impact`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -169,7 +170,7 @@ export default function Settings() {
     setIsRemoving(true);
 
     try {
-      const res = await fetch(`/api/household/members/${removalImpact.member.id}`, {
+      const res = await fetch(`${API_BASE}/household/members/${removalImpact.member.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -195,7 +196,7 @@ export default function Settings() {
     setIsLeaving(true);
 
     try {
-      const res = await fetch('/api/household/leave', {
+      const res = await fetch(`${API_BASE}/household/leave`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -217,7 +218,7 @@ export default function Settings() {
   // Organizer dissolves household
   const handleDissolveClick = async () => {
     try {
-      const res = await fetch('/api/household/dissolve/impact', {
+      const res = await fetch(`${API_BASE}/household/dissolve/impact`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
@@ -235,7 +236,7 @@ export default function Settings() {
     setIsDissolving(true);
 
     try {
-      const res = await fetch('/api/household/dissolve', {
+      const res = await fetch(`${API_BASE}/household/dissolve`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -256,7 +257,7 @@ export default function Settings() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` },
       });

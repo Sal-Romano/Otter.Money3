@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../stores/auth';
 import type { CategorizationRuleWithCategory, RuleConditions } from '@otter-money/shared';
+import { API_BASE } from '../utils/api';
 
 interface CreateRuleRequest {
   categoryId: string;
@@ -28,7 +29,7 @@ export function useRules() {
   return useQuery<CategorizationRuleWithCategory[]>({
     queryKey: ['rules'],
     queryFn: async () => {
-      const res = await fetch('/api/rules', {
+      const res = await fetch(`${API_BASE}/rules`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -52,7 +53,7 @@ export function useCreateRule() {
 
   return useMutation({
     mutationFn: async (ruleData: CreateRuleRequest) => {
-      const res = await fetch('/api/rules', {
+      const res = await fetch(`${API_BASE}/rules`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export function useUpdateRule() {
 
   return useMutation({
     mutationFn: async ({ ruleId, updates }: { ruleId: string; updates: UpdateRuleRequest }) => {
-      const res = await fetch(`/api/rules/${ruleId}`, {
+      const res = await fetch(`${API_BASE}/rules/${ruleId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ export function useDeleteRule() {
 
   return useMutation({
     mutationFn: async (ruleId: string) => {
-      const res = await fetch(`/api/rules/${ruleId}`, {
+      const res = await fetch(`${API_BASE}/rules/${ruleId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -140,7 +141,7 @@ export function useTestRule() {
 
   return useMutation({
     mutationFn: async ({ conditions, limit }: { conditions: RuleConditions; limit?: number }) => {
-      const res = await fetch('/api/rules/test', {
+      const res = await fetch(`${API_BASE}/rules/test`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

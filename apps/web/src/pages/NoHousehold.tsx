@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from '../stores/auth';
+import { API_BASE } from '../utils/api';
 
 export default function NoHousehold() {
   const { user, accessToken, setAuth, logout } = useAuthStore();
@@ -13,7 +14,7 @@ export default function NoHousehold() {
     setError('');
 
     try {
-      const res = await fetch('/api/household/create', {
+      const res = await fetch(`${API_BASE}/household/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,7 +47,7 @@ export default function NoHousehold() {
     setError('');
 
     try {
-      const res = await fetch('/api/household/join', {
+      const res = await fetch(`${API_BASE}/household/join`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
