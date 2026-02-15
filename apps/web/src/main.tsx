@@ -6,6 +6,18 @@ import { Toaster } from 'sonner';
 import App from './App';
 import './index.css';
 
+// Track visual viewport height for keyboard-aware layouts (iOS)
+function setupViewportHeight() {
+  const update = () => {
+    const vh = window.visualViewport?.height ?? window.innerHeight;
+    document.documentElement.style.setProperty('--viewport-height', `${vh}px`);
+  };
+  update();
+  window.visualViewport?.addEventListener('resize', update);
+  window.addEventListener('resize', update);
+}
+setupViewportHeight();
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

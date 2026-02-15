@@ -69,9 +69,15 @@
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
-  /* Full viewport height that responds to keyboard (iOS dvh) */
+  /* Full viewport height that responds to keyboard (iOS) */
   .min-h-viewport {
     min-height: 100vh;
-    min-height: 100dvh;
+    min-height: var(--viewport-height, 100vh);
+  }
+
+  /* Fixed viewport height, no scroll (for login/auth pages) */
+  .h-viewport {
+    height: 100vh;
+    height: var(--viewport-height, 100vh);
   }
 }

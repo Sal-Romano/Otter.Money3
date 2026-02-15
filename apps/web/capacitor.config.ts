@@ -14,10 +14,10 @@ const config: CapacitorConfig = {
     : {},
   ios: {
     contentInset: 'never',
-    backgroundColor: '#9F6FBA',
+    backgroundColor: '#F9FAFB',
   },
   android: {
-    backgroundColor: '#9F6FBA',
+    backgroundColor: '#F9FAFB',
   },
   plugins: {
     StatusBar: {
