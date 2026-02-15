@@ -37,7 +37,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex h-viewport flex-col items-center justify-center overflow-hidden bg-primary-50 px-4">
+    <div className="flex h-viewport flex-col items-center justify-center overflow-y-auto overscroll-y-none bg-primary-50 px-4">
       {/* Logo */}
       <div className="mb-8 text-center">
         <img

@@ -3,20 +3,23 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { Capacitor } from '@capacitor/core';
 import App from './App';
 import './index.css';
 
-// Track visual viewport height for keyboard-aware layouts (iOS)
-function setupViewportHeight() {
-  const update = () => {
-    const vh = window.visualViewport?.height ?? window.innerHeight;
-    document.documentElement.style.setProperty('--viewport-height', `${vh}px`);
-  };
-  update();
-  window.visualViewport?.addEventListener('resize', update);
-  window.addEventListener('resize', update);
+// Track keyboard height for keyboard-aware layouts (iOS/Android)
+if (Capacitor.isNativePlatform()) {
+  import('@capacitor/keyboard').then(({ Keyboard }) => {
+    Keyboard.addListener('keyboardWillShow', (info) => {
+      document.documentElement.style.setProperty('--keyboard-height', `${info.keyboardHeight}px`);
+      document.documentElement.classList.add('keyboard-open');
+    });
+    Keyboard.addListener('keyboardWillHide', () => {
+      document.documentElement.style.setProperty('--keyboard-height', '0px');
+      document.documentElement.classList.remove('keyboard-open');
+    });
+  });
 }
-setupViewportHeight();
 
 const queryClient = new QueryClient({
   defaultOptions: {

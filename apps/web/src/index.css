@@ -69,15 +69,16 @@
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
-  /* Full viewport height that responds to keyboard (iOS) */
+  /* Full viewport height that responds to keyboard */
   .min-h-viewport {
     min-height: 100vh;
-    min-height: var(--viewport-height, 100vh);
+    min-height: calc(100vh - var(--keyboard-height, 0px));
   }
 
-  /* Fixed viewport height, no scroll (for login/auth pages) */
+  /* Fixed viewport height, no scroll (for auth pages) */
   .h-viewport {
     height: 100vh;
-    height: var(--viewport-height, 100vh);
+    height: calc(100vh - var(--keyboard-height, 0px));
+    transition: height 0.3s ease-out;
   }
 }
