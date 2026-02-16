@@ -1,0 +1,6 @@
+git_url(ENV["MATCH_GIT_URL"] || "git@github.com:Sal-Romano/otter-money-certs.git")
+storage_mode("git")
+type("appstore")
+app_identifier(["app.otter.money"])
+username("sal@sromano.net")
+team_id("HFL5RJABY5")

@@ -1,0 +1,118 @@
+default_platform(:ios)
+
+PROJECT_ROOT = File.expand_path("..", __dir__)
+WEB_DIR = File.join(PROJECT_ROOT, "apps", "web")
+IOS_PROJECT = File.join(WEB_DIR, "ios", "App")
+
+platform :ios do
+  # ── Private lanes ──────────────────────────────────────────
+
+  private_lane :load_api_key do
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_content: ENV["ASC_KEY_CONTENT"],
+      is_key_content_base64: false,
+      in_house: false
+    )
+  end
+
+  private_lane :build_web do
+    Dir.chdir(PROJECT_ROOT) do
+      sh("VITE_API_URL=https://app.otter.money/api npm run build:web")
+    end
+    # Use 'cap copy' instead of 'cap sync' to avoid pod install running
+    # inside cap sync. Pods are installed separately in the install_pods lane.
+    Dir.chdir(WEB_DIR) do
+      sh("npx cap copy ios")
+    end
+  end
+
+  private_lane :install_pods do
+    # Use pod directly (not bundle exec) because CocoaPods 1.16.2
+    # is incompatible with Ruby 4.0.1 bundled by Homebrew.
+    Dir.chdir(IOS_PROJECT) do
+      sh("LANG=en_US.UTF-8 /opt/homebrew/bin/pod install")
+    end
+  end
+
+  private_lane :configure_signing do
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: File.join(IOS_PROJECT, "App.xcodeproj"),
+      team_id: "HFL5RJABY5",
+      profile_name: "match AppStore app.otter.money",
+      code_sign_identity: "Apple Distribution"
+    )
+  end
+
+  # ── Public lanes ───────────────────────────────────────────
+
+  desc "Initialize match - generate certs and push to repo (run once)"
+  lane :init_certs do
+    load_api_key
+    setup_ci
+    match(type: "appstore", readonly: false)
+  end
+
+  desc "Download certificates and profiles from match"
+  lane :sync_certs do
+    load_api_key
+    match(type: "appstore", readonly: true)
+  end
+
+  desc "Build the app (no upload)"
+  lane :build do
+    load_api_key
+    setup_ci
+
+    match(type: "appstore", readonly: true)
+    configure_signing
+    build_web
+    install_pods
+
+    build_app(
+      workspace: File.join(IOS_PROJECT, "App.xcworkspace"),
+      scheme: "App",
+      export_method: "app-store",
+      output_directory: File.join(PROJECT_ROOT, "build"),
+      output_name: "OtterMoney.ipa",
+      clean: true
+    )
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    load_api_key
+    setup_ci
+
+    match(type: "appstore", readonly: true)
+    configure_signing
+    build_web
+    install_pods
+
+    # Auto-increment build number based on latest TestFlight build
+    current = latest_testflight_build_number(
+      app_identifier: "app.otter.money"
+    )
+    increment_build_number(
+      build_number: current + 1,
+      xcodeproj: File.join(IOS_PROJECT, "App.xcodeproj")
+    )
+
+    build_app(
+      workspace: File.join(IOS_PROJECT, "App.xcworkspace"),
+      scheme: "App",
+      export_method: "app-store",
+      output_directory: File.join(PROJECT_ROOT, "build"),
+      output_name: "OtterMoney.ipa",
+      clean: true
+    )
+
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true
+    )
+
+    UI.success("Successfully uploaded to TestFlight!")
+  end
+end

@@ -27,7 +27,9 @@
     "ios:build": "./scripts/ios-sync.sh --build",
     "ios:open": "./scripts/ios-sync.sh --build --open",
     "ios:live": "./scripts/ios-live-reload.sh start",
-    "ios:live:stop": "./scripts/ios-live-reload.sh stop"
+    "ios:live:stop": "./scripts/ios-live-reload.sh stop",
+    "ios:beta": "./scripts/ios-beta.sh",
+    "ios:beta:build": "./scripts/ios-beta.sh build"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
