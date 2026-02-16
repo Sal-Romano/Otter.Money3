@@ -62,7 +62,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="mb-6">
           <img
-            src="/images/otters_logo_vector_nobg.svg"
+            src="/images/logo-512x-trans.png"
             alt="Otter Money"
             className="h-10 w-10"
           />

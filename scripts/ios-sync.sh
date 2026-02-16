@@ -26,7 +26,7 @@ done
 if [ "$BUILD" = true ]; then
   echo "=> Building web app..."
   cd "$PROJECT_ROOT"
-  VITE_API_URL=https://app.otter.money/api npm run build:web
+  VITE_API_URL=https://app.otter.money/api VITE_APP_URL=https://app.otter.money npm run build:web
 fi
 
 # Step 2: Run cap sync to update iOS project

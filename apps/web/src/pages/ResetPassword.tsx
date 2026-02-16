@@ -55,7 +55,7 @@ export default function ResetPassword() {
       <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
         <div className="mb-8 text-center">
           <img
-            src="/images/otters_logo_vector_nobg.svg"
+            src="/images/logo-512x-trans.png"
             alt="Otter Money"
             className="mx-auto h-24 w-24"
           />
@@ -77,7 +77,7 @@ export default function ResetPassword() {
       <div className="flex min-h-viewport flex-col items-center justify-center bg-primary-50 px-4">
         <div className="mb-8 text-center">
           <img
-            src="/images/otters_logo_vector_nobg.svg"
+            src="/images/logo-512x-trans.png"
             alt="Otter Money"
             className="mx-auto h-24 w-24"
           />
@@ -99,7 +99,7 @@ export default function ResetPassword() {
       {/* Logo */}
       <div className="mb-8 text-center">
         <img
-          src="/images/otters_logo_vector_nobg.svg"
+          src="/images/logo-512x-trans.png"
           alt="Otter Money"
           className="mx-auto h-24 w-24"
         />

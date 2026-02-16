@@ -8,7 +8,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { ChevronDown, ChevronRight, Trash2, Plus, Pencil, X, Check } from 'lucide-react';
 import { ImportWizardModal } from '../components/ImportWizardModal';
 import type { CategoryType, CategoryTreeNode } from '@otter-money/shared';
-import { API_BASE } from '../utils/api';
+import { API_BASE, APP_URL } from '../utils/api';
 
 interface HouseholdMember {
   id: string;
@@ -82,7 +82,7 @@ export default function Settings() {
 
         if (inviteRes.ok) {
           const { data } = await inviteRes.json();
-          setInviteUrl(`${window.location.origin}/join/${data.inviteCode}`);
+          setInviteUrl(`${APP_URL}/join/${data.inviteCode}`);
         }
       } catch (err) {
         console.error('Failed to fetch settings data:', err);
@@ -138,7 +138,7 @@ export default function Settings() {
 
       if (res.ok) {
         const { data } = await res.json();
-        setInviteUrl(`${window.location.origin}/join/${data.inviteCode}`);
+        setInviteUrl(`${APP_URL}/join/${data.inviteCode}`);
       }
     } catch (err) {
       console.error('Failed to regenerate invite:', err);
@@ -412,7 +412,7 @@ export default function Settings() {
         <h2 className="mb-4 text-lg font-semibold text-gray-900">About</h2>
         <div className="flex items-center gap-3">
           <img
-            src="/images/otters_logo_vector_nobg.svg"
+            src="/images/logo-512x-trans.png"
             alt="Otter Money"
             className="h-12 w-12"
           />
